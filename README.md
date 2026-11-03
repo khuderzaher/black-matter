@@ -2,7 +2,7 @@
 
 An immersive spatial particle universe built with Three.js, custom GLSL shaders, Unreal Bloom, and optional local hand-gesture recognition.
 
-**Status:** 0.3.4 — Live Sensor Inspector & Motion Field
+**Status:** 0.3.5 — Live Sensor Inspector & Motion Field
 
 ## Experience
 
