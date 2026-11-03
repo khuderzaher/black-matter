@@ -11,6 +11,7 @@ const vertexShader = `
   uniform float uTime;
   uniform float uPixelRatio;
   uniform float uInteraction;
+  uniform float uHandInteraction;
   uniform float uGesture;
   uniform vec3 uPointer;
   uniform float uEnergy;
@@ -61,7 +62,7 @@ const vertexShader = `
       vec3 delta = p - joint.xyz;
       float distanceSquared = dot(delta, delta);
       float influenceRadius = mix(0.24, 0.62, clamp(joint.w, 0.0, 1.0));
-      float field = exp(-distanceSquared / (influenceRadius * influenceRadius)) * joint.w * active;
+      float field = exp(-distanceSquared / (influenceRadius * influenceRadius)) * joint.w * active * uHandInteraction;
       vec3 radial = normalize(delta + vec3(0.0001));
       vec3 curl = normalize(vec3(-delta.y, delta.x, 0.18 + delta.z * 0.16));
       float pulse = 0.78 + 0.22 * sin(uTime * 1.4 + float(i) * 0.63 + distanceSquared * 2.1);
@@ -217,6 +218,8 @@ export class ParticleField {
     this.pointerCurrent = new THREE.Vector3();
     this.interactionTarget = 0;
     this.interactionCurrent = 0;
+    this.handInteractionTarget = 0;
+    this.handInteraction = 0;
     this.gestureTarget = 0.62;
     this.energy = 0;
 
@@ -231,6 +234,7 @@ export class ParticleField {
       uTime: { value: 0 },
       uPixelRatio: { value: this.getPixelRatio() },
       uInteraction: { value: 0 },
+      uHandInteraction: { value: 0 },
       uGesture: { value: 0.62 },
       uPointer: { value: new THREE.Vector3() },
       uEnergy: { value: 0 },
@@ -404,7 +408,8 @@ export class ParticleField {
     });
 
     this.handVisibilityTarget = activeHands > 0 ? 1 : 0;
-    this.interactionTarget = activeHands > 0 ? 0.92 : 0;
+    this.handInteractionTarget = activeHands > 0 ? 1 : 0;
+    this.interactionTarget = 0;
     this.gestureTarget = activeHands > 0 ? opennessTotal / activeHands : 0.62;
     this.energy = Math.max(this.energy, activeHands > 0 ? 0.88 : 0);
   }
@@ -420,6 +425,7 @@ export class ParticleField {
 
   releasePointer() {
     this.interactionTarget = 0;
+    this.handInteractionTarget = 0;
     this.handVisibilityTarget = 0;
     this.jointTargets.forEach((joint) => joint.set(0, 0, 0, 0));
   }
@@ -469,6 +475,8 @@ export class ParticleField {
     this.uniforms.uTime.value = elapsed;
     this.uniforms.uPointer.value.copy(this.pointerCurrent);
     this.uniforms.uInteraction.value = this.interactionCurrent;
+    this.handInteraction = THREE.MathUtils.damp(this.handInteraction, this.handInteractionTarget, 5.5, delta);
+    this.uniforms.uHandInteraction.value = this.handInteraction;
     this.uniforms.uGesture.value = THREE.MathUtils.damp(this.uniforms.uGesture.value, this.gestureTarget, 3.8, delta);
     this.uniforms.uEnergy.value = this.energy;
     this.uniforms.uJoints.value = this.jointUniforms;
