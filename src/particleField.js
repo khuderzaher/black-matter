@@ -48,8 +48,8 @@ const nebulaFragmentShader = `
     vec2 uv = vUv;
     vec2 drift = vec2(uTime * 0.006, -uTime * 0.004);
     float broad = fbm(uv * 3.1 + drift);
-    float detail = fbm(uv * 6.4 - drift * 1.7 + broad * 0.55);
-    float wisps = fbm(uv * 10.2 + vec2(-uTime * 0.003, uTime * 0.005) + detail * 0.3);
+    float detail = fbm(uv * 6.4 - drift * 1.7 + vec2(broad * 0.55));
+    float wisps = fbm(uv * 10.2 + vec2(-uTime * 0.003, uTime * 0.005) + vec2(detail * 0.3));
 
     float cloud = smoothstep(0.29, 0.76, broad * 0.66 + detail * 0.34);
     float filament = smoothstep(0.58, 0.82, detail * 0.72 + wisps * 0.28);
