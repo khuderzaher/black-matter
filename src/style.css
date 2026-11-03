@@ -203,6 +203,7 @@ button { font: inherit; }
 }
 .joint-inspector-head > div { display: flex; flex-direction: column; gap: 4px; }
 .joint-inspector-head strong { font: 9px 'Manrope', sans-serif; font-weight: 500; color: rgba(233,236,255,.8); }
+.joint-note { font: 6px 'DM Mono', monospace; letter-spacing: .055em; color: rgba(171,184,221,.42); }
 .joint-count { font-size: 7px; letter-spacing: .09em; color: rgba(190,195,227,.48); }
 .joint-table-head, .joint-row {
   display: grid; grid-template-columns: 18px minmax(54px, 1fr) repeat(5, minmax(31px, .44fr));
