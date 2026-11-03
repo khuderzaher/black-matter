@@ -1,4 +1,8 @@
 import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ParticleField } from './particleField.js';
 import { HandTracking } from './handTracking.js';
 import './style.css';
@@ -15,23 +19,36 @@ const permissionNote = document.querySelector('#permission-note');
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
+scene.fog = new THREE.FogExp2(0x03030a, 0.012);
 
-const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 80);
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 90);
 camera.position.set(0, 0, 8.5);
 
+const pixelRatio = Math.min(window.devicePixelRatio || 1, window.innerWidth < 760 ? 1.2 : 1.55);
 const renderer = new THREE.WebGLRenderer({
   canvas,
   antialias: false,
   alpha: false,
   powerPreference: 'high-performance'
 });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setPixelRatio(pixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight, false);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NoToneMapping;
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  1.12,
+  0.72,
+  0.16
+);
+composer.addPass(bloomPass);
+composer.addPass(new OutputPass());
 
 const field = new ParticleField(renderer, scene, camera);
 const clock = new THREE.Clock();
-const pointer = { x: 0, y: 0, active: false };
 let experienceStarted = false;
 let handTracking = null;
 let disposed = false;
@@ -50,54 +67,45 @@ function updatePointer(event) {
   const rect = canvas.getBoundingClientRect();
   const x = (event.clientX - rect.left) / rect.width;
   const y = (event.clientY - rect.top) / rect.height;
-  pointer.x = (x - 0.5) * 2;
-  pointer.y = (0.5 - y) * 2;
-  pointer.active = true;
-  field.setPointer(pointer.x, pointer.y, 0.78, 0.7);
+  field.setPointer((x - 0.5) * 2, (0.5 - y) * 2, 0.82, 0.62);
 }
-
 canvas.addEventListener('pointermove', updatePointer, { passive: true });
-canvas.addEventListener('pointerdown', (event) => {
-  updatePointer(event);
-  field.setPointer(pointer.x, pointer.y, 1, 0.88);
-});
+canvas.addEventListener('pointerdown', updatePointer, { passive: true });
 canvas.addEventListener('pointerleave', () => {
-  pointer.active = false;
   if (!handTracking?.running) field.releasePointer();
 });
 
-function onHand(hand) {
-  if (!hand) {
-    field.releasePointer();
-    return;
-  }
-  field.setPointer(hand.x, hand.y, hand.strength, hand.gesture);
+function onHands(hands) {
+  field.setHands(hands);
 }
 
-function setCameraState(state) {
-  cameraState.classList.toggle('is-live', state === 'live');
-  if (state === 'loading') cameraLabel.textContent = 'INITIALIZING CAMERA';
-  else if (state === 'live') cameraLabel.textContent = 'HAND TRACKING ACTIVE';
-  else if (state === 'error') cameraLabel.textContent = 'CAMERA UNAVAILABLE';
+function setCameraState(state, count = 0, hands = []) {
+  cameraState.classList.toggle('is-live', state === 'live' || state === 'tracking');
+  if (state === 'loading') cameraLabel.textContent = 'PREPARING SPATIAL SENSING';
+  else if (state === 'live') cameraLabel.textContent = 'HAND SENSING READY';
+  else if (state === 'tracking') {
+    const details = hands.map((hand) => hand.gesture.replaceAll('_', ' ')).join(' · ');
+    cameraLabel.textContent = count > 0 ? `${count} HAND${count > 1 ? 'S' : ''} · ${details}` : 'SEARCHING FOR HANDS';
+  } else if (state === 'error') cameraLabel.textContent = 'CAMERA UNAVAILABLE';
   else cameraLabel.textContent = 'POINTER FIELD';
 }
 
 async function enableCamera() {
   cameraButton.disabled = true;
-  cameraButton.textContent = 'INITIALIZING HAND TRACKING…';
+  cameraButton.textContent = 'INITIALIZING SPATIAL SENSING…';
   try {
-    handTracking = new HandTracking(video, onHand, setCameraState);
+    handTracking = new HandTracking(video, onHands, setCameraState);
     await handTracking.start();
-    cameraButton.textContent = 'HAND TRACKING ENABLED';
+    cameraButton.textContent = 'SPATIAL SENSING ACTIVE';
     cameraButton.disabled = false;
-    permissionNote.textContent = 'Your hand is now shaping the field. Camera frames stay on this device.';
+    permissionNote.textContent = 'Up to two hands · 21 landmarks each · local camera processing only.';
   } catch (error) {
-    console.error('Black Matter camera setup failed:', error);
+    console.error('Black Matter hand sensing failed:', error);
     handTracking?.stop();
     handTracking = null;
     cameraButton.disabled = false;
-    cameraButton.textContent = 'TRY CAMERA AGAIN';
-    permissionNote.textContent = error?.message || 'Camera setup failed. You can continue using pointer or touch interaction.';
+    cameraButton.textContent = 'TRY HAND TRACKING AGAIN';
+    permissionNote.textContent = error?.message || 'Hand tracking failed. Pointer and touch interaction remain available.';
     setCameraState('error');
   }
 }
@@ -107,6 +115,7 @@ cameraButton.addEventListener('click', async () => {
   setExperienceStarted(true);
   await enableCamera();
 });
+
 function exitExperience() {
   handTracking?.stop();
   handTracking = null;
@@ -116,9 +125,7 @@ function exitExperience() {
   permissionNote.textContent = 'Camera access is optional. Video is processed locally in your browser.';
   setCameraState('off');
 }
-
 exitButton.addEventListener('click', exitExperience);
-
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && experienceStarted) exitExperience();
 });
@@ -129,6 +136,7 @@ function resize() {
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
   renderer.setSize(width, height, false);
+  composer.setSize(width, height);
   field.resize();
 }
 window.addEventListener('resize', resize, { passive: true });
@@ -136,9 +144,8 @@ window.addEventListener('resize', resize, { passive: true });
 function animate() {
   if (disposed) return;
   const delta = Math.min(clock.getDelta(), 0.05);
-  const elapsed = clock.elapsedTime;
-  field.update(elapsed, delta);
-  renderer.render(scene, camera);
+  field.update(clock.elapsedTime, delta);
+  composer.render(delta);
   requestAnimationFrame(animate);
 }
 animate();
@@ -147,5 +154,6 @@ window.addEventListener('pagehide', () => {
   disposed = true;
   handTracking?.stop();
   field.dispose();
+  composer.dispose();
   renderer.dispose();
 }, { once: true });
