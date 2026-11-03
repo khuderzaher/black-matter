@@ -222,6 +222,14 @@ button { font: inherit; }
   .edition { font-size: 8px; }
   .intro-copy { font-size: 12px; }
   .camera-state { bottom: max(20px, env(safe-area-inset-bottom)); }
+  .sensor-toggle { right: 11px; bottom: max(13px, env(safe-area-inset-bottom)); width: 32px; height: 32px; }
+  .sensor-panel {
+    right: 8px; bottom: calc(max(13px, env(safe-area-inset-bottom)) + 43px);
+    width: calc(100vw - 16px); max-height: min(80dvh, 650px); border-radius: 12px;
+  }
+  .sensor-preview { aspect-ratio: 16 / 9; }
+  .joint-readout { max-height: 145px; }
+  .joint-table-head, .joint-row { grid-template-columns: 18px minmax(57px, 1fr) repeat(4, minmax(34px, .46fr)); column-gap: 4px; padding-left: 9px; padding-right: 9px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
