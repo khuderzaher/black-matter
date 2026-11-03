@@ -16,6 +16,42 @@ const exitButton = document.querySelector('#exit-button');
 const cameraState = document.querySelector('#camera-state');
 const cameraLabel = document.querySelector('#camera-label');
 const permissionNote = document.querySelector('#permission-note');
+const sensorToggle = document.querySelector('#sensor-toggle');
+const sensorPanel = document.querySelector('#sensor-panel');
+const sensorClose = document.querySelector('#sensor-close');
+const sensorStatus = document.querySelector('#sensor-status');
+const sensorPreview = document.querySelector('#sensor-preview');
+const handOverlay = document.querySelector('#hand-overlay');
+const previewEmpty = document.querySelector('#preview-empty');
+const sensorLatency = document.querySelector('#sensor-latency');
+const sensorFps = document.querySelector('#sensor-fps');
+const sensorHandCount = document.querySelector('#sensor-hand-count');
+const sensorSummary = document.querySelector('#sensor-summary');
+const jointCount = document.querySelector('#joint-count');
+const jointReadout = document.querySelector('#joint-readout');
+const sensorResolution = document.querySelector('#sensor-resolution');
+
+const handConnections = [
+  [0, 1], [1, 2], [2, 3], [3, 4],
+  [0, 5], [5, 6], [6, 7], [7, 8],
+  [0, 9], [9, 10], [10, 11], [11, 12],
+  [0, 13], [13, 14], [14, 15], [15, 16],
+  [0, 17], [17, 18], [18, 19], [19, 20],
+  [5, 9], [9, 13], [13, 17]
+];
+const landmarkNames = [
+  'Wrist', 'Thumb CMC', 'Thumb MCP', 'Thumb IP', 'Thumb tip',
+  'Index MCP', 'Index PIP', 'Index DIP', 'Index tip',
+  'Middle MCP', 'Middle PIP', 'Middle DIP', 'Middle tip',
+  'Ring MCP', 'Ring PIP', 'Ring DIP', 'Ring tip',
+  'Pinky MCP', 'Pinky PIP', 'Pinky DIP', 'Pinky tip'
+];
+const fingerColors = ['#80d9dd', '#9ee0ed', '#aeb3ff', '#c3a7fa', '#e4a8d2', '#a0d8c4'];
+let inspectorOpen = false;
+let latestHands = [];
+let inspectorStructureKey = '';
+let jointValueNodes = [];
+let handSummaryNodes = [];
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
@@ -84,8 +120,189 @@ canvas.addEventListener('pointerleave', () => {
   if (!handTracking?.running) field.releasePointer();
 });
 
+function makeNode(tag, className, text = '') {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text) node.textContent = text;
+  return node;
+}
+
+function setInspectorOpen(open) {
+  inspectorOpen = Boolean(open);
+  sensorPanel.hidden = !inspectorOpen;
+  sensorPanel.setAttribute('aria-hidden', String(!inspectorOpen));
+  sensorToggle.setAttribute('aria-expanded', String(inspectorOpen));
+  sensorToggle.classList.toggle('is-open', inspectorOpen);
+  if (inspectorOpen) {
+    requestAnimationFrame(() => updateInspectorReadout(latestHands));
+  }
+}
+
+function syncInspectorStructure(hands) {
+  const key = hands.map((hand) => hand.handedness || 'HAND').join('|') || 'empty';
+  if (key === inspectorStructureKey) return;
+  inspectorStructureKey = key;
+  jointValueNodes = [];
+  handSummaryNodes = [];
+  sensorSummary.replaceChildren();
+  jointReadout.replaceChildren();
+
+  if (!hands.length) {
+    sensorSummary.append(makeNode('p', 'sensor-empty-summary', 'No hand landmarks received yet.'));
+    jointReadout.append(makeNode('p', 'sensor-empty-summary', 'Coordinates will appear when a hand is detected.'));
+    jointCount.textContent = '0 POINTS';
+    return;
+  }
+
+  hands.forEach((hand, handIndex) => {
+    const summary = makeNode('div', 'hand-summary-card');
+    const title = makeNode('span', 'hand-summary-title', `${(hand.handedness || `HAND ${handIndex + 1}`).toUpperCase()} HAND`);
+    const gesture = makeNode('span', 'hand-summary-value', 'GESTURE —');
+    const speed = makeNode('span', 'hand-summary-value', 'SPEED —');
+    const pinch = makeNode('span', 'hand-summary-value', 'PINCH —');
+    const openness = makeNode('span', 'hand-summary-value', 'OPEN —');
+    summary.append(title, gesture, speed, pinch, openness);
+    sensorSummary.append(summary);
+    handSummaryNodes.push({ gesture, speed, pinch, openness });
+
+    jointReadout.append(makeNode('div', 'joint-group-title', `${(hand.handedness || `HAND ${handIndex + 1}`).toUpperCase()} · 21 LANDMARKS`));
+    for (let landmarkIndex = 0; landmarkIndex < 21; landmarkIndex += 1) {
+      const row = makeNode('div', 'joint-row');
+      const index = makeNode('span', 'joint-index', String(landmarkIndex).padStart(2, '0'));
+      const name = makeNode('span', 'joint-name', landmarkNames[landmarkIndex]);
+      const x = makeNode('span', 'joint-value', '—');
+      const y = makeNode('span', 'joint-value', '—');
+      const z = makeNode('span', 'joint-value', '—');
+      const velocity = makeNode('span', 'joint-value', '—');
+      row.append(index, name, x, y, z, velocity);
+      jointReadout.append(row);
+      jointValueNodes.push({ handIndex, landmarkIndex, x, y, z, velocity });
+    }
+  });
+
+  jointCount.textContent = `${hands.length * 21} POINTS`;
+}
+
+function drawHandOverlay(hands) {
+  if (!inspectorOpen) return;
+  const bounds = sensorPreview.getBoundingClientRect();
+  if (!bounds.width || !bounds.height) return;
+
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  const width = bounds.width;
+  const height = bounds.height;
+  const pixelWidth = Math.round(width * dpr);
+  const pixelHeight = Math.round(height * dpr);
+  if (handOverlay.width !== pixelWidth || handOverlay.height !== pixelHeight) {
+    handOverlay.width = pixelWidth;
+    handOverlay.height = pixelHeight;
+  }
+  const context = handOverlay.getContext('2d');
+  if (!context) return;
+  context.setTransform(dpr, 0, 0, dpr, 0, 0);
+  context.clearRect(0, 0, width, height);
+
+  const videoWidth = video.videoWidth;
+  const videoHeight = video.videoHeight;
+  if (!videoWidth || !videoHeight || !hands.length) return;
+
+  // Match object-fit: cover so the skeleton stays registered to the visible camera crop.
+  const scale = Math.max(width / videoWidth, height / videoHeight);
+  const drawnWidth = videoWidth * scale;
+  const drawnHeight = videoHeight * scale;
+  const offsetX = (width - drawnWidth) * 0.5;
+  const offsetY = (height - drawnHeight) * 0.5;
+  const pointAt = (point) => ({
+    x: offsetX + point.x * drawnWidth,
+    y: offsetY + point.y * drawnHeight
+  });
+
+  hands.forEach((hand, handIndex) => {
+    if (!Array.isArray(hand.landmarks) || hand.landmarks.length < 21) return;
+    context.save();
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+    context.shadowBlur = 7;
+
+    for (const [from, to] of handConnections) {
+      const a = pointAt(hand.landmarks[from]);
+      const b = pointAt(hand.landmarks[to]);
+      const color = fingerColors[Math.min(5, Math.floor(to / 4))];
+      context.beginPath();
+      context.moveTo(a.x, a.y);
+      context.lineTo(b.x, b.y);
+      context.strokeStyle = color;
+      context.shadowColor = color;
+      context.globalAlpha = 0.76;
+      context.lineWidth = 1.25;
+      context.stroke();
+    }
+
+    hand.landmarks.forEach((landmark, index) => {
+      const point = pointAt(landmark);
+      const tip = [4, 8, 12, 16, 20].includes(index);
+      const radius = tip ? 3.1 : [0, 5, 9, 13, 17].includes(index) ? 2.65 : 2.15;
+      const color = fingerColors[Math.min(5, Math.floor(index / 4))];
+      context.beginPath();
+      context.arc(point.x, point.y, radius, 0, Math.PI * 2);
+      context.fillStyle = color;
+      context.shadowColor = color;
+      context.shadowBlur = 9;
+      context.globalAlpha = 0.98;
+      context.fill();
+      context.shadowBlur = 0;
+      context.font = '7px "DM Mono", monospace';
+      context.textAlign = 'left';
+      context.fillStyle = 'rgba(248,250,255,.88)';
+      context.fillText(String(index), point.x + 4, point.y - 3);
+    });
+
+    const palm = pointAt(hand.center || hand.landmarks[0]);
+    context.beginPath();
+    context.arc(palm.x, palm.y, 5.5, 0, Math.PI * 2);
+    context.strokeStyle = handIndex === 0 ? 'rgba(175,225,255,.86)' : 'rgba(232,183,239,.86)';
+    context.lineWidth = 1;
+    context.globalAlpha = 0.85;
+    context.stroke();
+    context.restore();
+  });
+}
+
+function updateInspectorReadout(hands = latestHands) {
+  syncInspectorStructure(hands);
+  sensorHandCount.textContent = `${hands.length} / 2`;
+  previewEmpty.hidden = video.readyState >= 2 && video.videoWidth > 0;
+  sensorResolution.textContent = video.videoWidth
+    ? `${video.videoWidth} × ${video.videoHeight} / ${hands.length} HAND(S)`
+    : 'CAMERA NOT CONNECTED';
+
+  handSummaryNodes.forEach((nodes, index) => {
+    const hand = hands[index];
+    if (!hand) return;
+    nodes.gesture.textContent = `${(hand.gesture || 'UNKNOWN').replaceAll('_', ' ')} ${Math.round((hand.gestureScore || 0) * 100)}%`;
+    nodes.speed.textContent = `SPEED ${(hand.velocity || 0).toFixed(2)}`;
+    nodes.pinch.textContent = `PINCH ${((hand.pinch || 0) * 100).toFixed(0)}%`;
+    nodes.openness.textContent = `OPEN ${((hand.openness || 0) * 100).toFixed(0)}%`;
+  });
+
+  jointValueNodes.forEach((nodes) => {
+    const point = hands[nodes.handIndex]?.landmarks?.[nodes.landmarkIndex];
+    if (!point) return;
+    nodes.x.textContent = point.x.toFixed(3);
+    nodes.y.textContent = point.y.toFixed(3);
+    nodes.z.textContent = point.z.toFixed(3);
+    const velocity = Math.hypot(point.vx || 0, point.vy || 0, (point.vz || 0) * 0.42);
+    nodes.velocity.textContent = velocity.toFixed(2);
+    nodes.velocity.title = `Acceleration: ${(point.acceleration || 0).toFixed(2)} normalized units/s²`;
+  });
+
+  drawHandOverlay(hands);
+}
+
 function onHands(hands) {
+  latestHands = hands;
   field.setHands(hands);
+  if (inspectorOpen) updateInspectorReadout(hands);
 }
 
 function setCameraState(state, count = 0, hands = [], metrics = {}) {
