@@ -370,6 +370,8 @@ function setCameraState(state, count = 0, hands = [], metrics = {}) {
     permissionNote.textContent = detail;
     cameraButton.disabled = false;
     cameraButton.textContent = 'RETRY HAND TRACKING';
+    sensorEnableCamera.disabled = false;
+    sensorEnableCamera.textContent = 'TRY AGAIN';
   } else {
     cameraLabel.textContent = 'POINTER FIELD';
     sensorStatus.textContent = 'CAMERA STANDBY';
@@ -423,6 +425,8 @@ function exitExperience() {
   setExperienceStarted(false);
   cameraButton.disabled = false;
   cameraButton.textContent = 'ENABLE HAND TRACKING';
+  sensorEnableCamera.disabled = false;
+  sensorEnableCamera.textContent = 'ENABLE HAND TRACKING';
   permissionNote.textContent = 'Camera access is optional. Video is processed locally in your browser.';
   setCameraState('off');
 }
