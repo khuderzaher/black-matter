@@ -383,9 +383,14 @@ export class ParticleField {
 
       hand.landmarks.slice(0, LANDMARKS_PER_HAND).forEach((landmark, index) => {
         const slot = handIndex * LANDMARKS_PER_HAND + index;
-        const x = (0.5 - landmark.x) * visibleWidth * 0.5;
-        const y = (0.5 - landmark.y) * visibleHeight * 0.5;
-        const z = THREE.MathUtils.clamp(-(landmark.z || 0) * 9, -1.5, 1.5);
+        // A short predictive lead makes the field feel connected to motion, not delayed coordinates.
+        const lead = 0.026;
+        const predictedX = landmark.x + (landmark.vx || 0) * lead;
+        const predictedY = landmark.y + (landmark.vy || 0) * lead;
+        const predictedZ = (landmark.z || 0) + (landmark.vz || 0) * lead * 0.5;
+        const x = (0.5 - predictedX) * visibleWidth * 0.5;
+        const y = (0.5 - predictedY) * visibleHeight * 0.5;
+        const z = THREE.MathUtils.clamp(-predictedZ * 9, -1.5, 1.5);
         const speed = landmark.speed || hand.velocity || 0;
         const fingerOpen = hand.fingers?.[this.fingerForLandmark(index)] || 0;
         const weight = getJointWeight(index, speed, fingerOpen);
