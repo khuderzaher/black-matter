@@ -86,6 +86,7 @@ const vertexShader = `
   uniform vec3 uPointer;
   uniform float uEnergy;
   uniform vec4 uJoints[${MAX_JOINTS}];
+  uniform vec4 uJointMotion[${MAX_JOINTS}];
 
   varying float vDepth;
   varying float vTwinkle;
@@ -128,6 +129,7 @@ const vertexShader = `
     vec3 jointFlow = vec3(0.0);
     for (int i = 0; i < ${MAX_JOINTS}; i++) {
       vec4 joint = uJoints[i];
+      vec4 motion = uJointMotion[i];
       if (joint.w <= 0.015) continue;
       vec3 delta = p - joint.xyz;
       float distanceSquared = dot(delta, delta);
@@ -135,9 +137,15 @@ const vertexShader = `
       float field = exp(-distanceSquared / (influenceRadius * influenceRadius)) * joint.w * uHandInteraction;
       vec3 radial = normalize(delta + vec3(0.0001));
       vec3 curl = normalize(vec3(-delta.y, delta.x, 0.18 + delta.z * 0.16));
-      float pulse = 0.78 + 0.22 * sin(uTime * 1.4 + float(i) * 0.63 + distanceSquared * 2.1);
+      float movementSpeed = clamp(length(motion.xyz) * 0.11, 0.0, 1.0);
+      float accelerationPulse = clamp(motion.w, 0.0, 1.0);
+      float pulse = 0.82 + 0.18 * sin(uTime * (1.15 + movementSpeed * 2.4) + float(i) * 0.63 + distanceSquared * 2.1);
       float polarity = mix(mix(-0.22, 0.48, uGesture), -0.82, uPinch);
-      jointFlow += (radial * polarity + curl * (0.33 + uPinch * 0.22)) * field * pulse;
+      float ripple = sin(sqrt(max(distanceSquared, 0.0)) * 8.2 - uTime * (1.35 + movementSpeed * 3.8) + float(i) * 0.47);
+      vec3 motionWake = motion.xyz * (0.014 + movementSpeed * 0.018);
+      jointFlow += (radial * polarity + curl * (0.31 + uPinch * 0.22)) * field * pulse;
+      jointFlow += motionWake * field * (0.42 + accelerationPulse * 0.42);
+      jointFlow += curl * ripple * field * (0.018 + movementSpeed * 0.035 + accelerationPulse * 0.016);
       jointInfluence = max(jointInfluence, field);
     }
 
@@ -298,6 +306,8 @@ export class ParticleField {
 
     this.jointUniforms = Array.from({ length: MAX_JOINTS }, () => new THREE.Vector4());
     this.jointTargets = Array.from({ length: MAX_JOINTS }, () => new THREE.Vector4());
+    this.jointMotionUniforms = Array.from({ length: MAX_JOINTS }, () => new THREE.Vector4());
+    this.jointMotionTargets = Array.from({ length: MAX_JOINTS }, () => new THREE.Vector4());
     this.handTargetPositions = new Float32Array(MAX_JOINTS * 3);
     this.handCurrentPositions = new Float32Array(MAX_JOINTS * 3);
     this.handTargetPositions.fill(1000);
@@ -315,7 +325,8 @@ export class ParticleField {
       uPinch: { value: 0 },
       uPointer: { value: new THREE.Vector3() },
       uEnergy: { value: 0 },
-      uJoints: { value: this.jointUniforms }
+      uJoints: { value: this.jointUniforms },
+      uJointMotion: { value: this.jointMotionUniforms }
     };
 
     this.geometry = createFieldGeometry(this.count);
@@ -473,9 +484,11 @@ export class ParticleField {
     const usableHands = hands.slice(0, MAX_HANDS);
     let opennessTotal = 0;
     let pinchTotal = 0;
+    let motionTotal = 0;
     let activeHands = 0;
 
     this.jointTargets.forEach((joint) => joint.set(0, 0, 0, 0));
+    this.jointMotionTargets.forEach((motion) => motion.set(0, 0, 0, 0));
     this.handTargetPositions.fill(1000);
     const nextActiveSlots = [false, false];
 
@@ -501,8 +514,14 @@ export class ParticleField {
         const speed = landmark.speed || hand.velocity || 0;
         const fingerOpen = hand.fingers?.[this.fingerForLandmark(index)] || 0;
         const weight = getJointWeight(index, speed, fingerOpen);
+        const motionX = -(landmark.vx || 0) * visibleWidth * 0.5;
+        const motionY = -(landmark.vy || 0) * visibleHeight * 0.5;
+        const motionZ = -(landmark.vz || 0) * 2.2;
+        const acceleration = THREE.MathUtils.clamp((landmark.acceleration || 0) * 0.035, 0, 1);
 
         this.jointTargets[slot].set(x, y, z, weight);
+        this.jointMotionTargets[slot].set(motionX, motionY, motionZ, acceleration);
+        motionTotal += speed;
         const offset = slot * 3;
         this.handTargetPositions[offset] = x;
         this.handTargetPositions[offset + 1] = y;
@@ -524,11 +543,13 @@ export class ParticleField {
           this.handCurrentPositions[offset + 1] = 1000;
           this.handCurrentPositions[offset + 2] = 1000;
           this.jointUniforms[slot].set(0, 0, 0, 0);
+          this.jointMotionUniforms[slot].set(0, 0, 0, 0);
         } else if (!this.handSlotActive[handIndex]) {
           this.handCurrentPositions[offset] = this.handTargetPositions[offset];
           this.handCurrentPositions[offset + 1] = this.handTargetPositions[offset + 1];
           this.handCurrentPositions[offset + 2] = this.handTargetPositions[offset + 2];
           this.jointUniforms[slot].copy(this.jointTargets[slot]);
+          this.jointMotionUniforms[slot].copy(this.jointMotionTargets[slot]);
         }
       }
     }
@@ -539,7 +560,8 @@ export class ParticleField {
     this.interactionTarget = 0;
     this.gestureTarget = activeHands > 0 ? opennessTotal / activeHands : 0.62;
     this.pinchTarget = activeHands > 0 ? pinchTotal / activeHands : 0;
-    this.energy = Math.max(this.energy, activeHands > 0 ? 0.88 : 0);
+    const meanMotion = activeHands > 0 ? motionTotal / (activeHands * LANDMARKS_PER_HAND) : 0;
+    this.energy = Math.max(this.energy, activeHands > 0 ? 0.62 + meanMotion * 0.36 : 0);
   }
 
   fingerForLandmark(index) {
@@ -561,6 +583,8 @@ export class ParticleField {
     this.handCurrentPositions.fill(1000);
     this.jointTargets.forEach((joint) => joint.set(0, 0, 0, 0));
     this.jointUniforms.forEach((joint) => joint.set(0, 0, 0, 0));
+    this.jointMotionTargets.forEach((motion) => motion.set(0, 0, 0, 0));
+    this.jointMotionUniforms.forEach((motion) => motion.set(0, 0, 0, 0));
   }
 
   updateHandConstellation(delta) {
@@ -569,6 +593,7 @@ export class ParticleField {
       const target = this.jointTargets[i];
       const current = this.jointUniforms[i];
       current.lerp(target, easing);
+      this.jointMotionUniforms[i].lerp(this.jointMotionTargets[i], 1 - Math.exp(-delta * 15));
       const offset = i * 3;
       this.handCurrentPositions[offset] += (this.handTargetPositions[offset] - this.handCurrentPositions[offset]) * easing;
       this.handCurrentPositions[offset + 1] += (this.handTargetPositions[offset + 1] - this.handCurrentPositions[offset + 1]) * easing;
@@ -616,6 +641,7 @@ export class ParticleField {
     this.uniforms.uPinch.value = this.pinch;
     this.uniforms.uEnergy.value = this.energy;
     this.uniforms.uJoints.value = this.jointUniforms;
+    this.uniforms.uJointMotion.value = this.jointMotionUniforms;
     this.updateHandConstellation(delta);
 
     this.points.rotation.y = Math.sin(elapsed * 0.035) * 0.035;
