@@ -41,7 +41,11 @@ The GitHub Actions workflow builds the site and publishes `dist/`. Set **Setting
 
 The production base path is configured as `/black-matter/`.
 
-## Camera diagnostics\n\nThe experience reports whether the camera is live, whether frames have been analysed, and the most recent inference time. A stalled worker is restarted once. Leaving browser fullscreen no longer stops the camera session.\n\n## Hand tracking
+## Camera diagnostics
+
+The experience reports whether the camera is live, whether frames have been analysed, and the most recent inference time. A stalled worker is restarted once. Leaving browser fullscreen no longer stops the camera session.
+
+## Hand tracking
 
 The Gesture Recognizer returns 21 image landmarks, 21 world landmarks, handedness, and gesture categories. Recognized poses such as Open Palm and Closed Fist map to distinct expansion and contraction responses. Landmark positions, world-depth coordinates, per-joint velocity, finger openness, and thumb-index pinch distance shape the particle field; a light constellation shows detected articulation. Detection supports up to two hands.
 
