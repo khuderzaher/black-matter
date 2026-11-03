@@ -69,9 +69,12 @@ function buildHand(result, index, timestamp) {
     const x = old ? old.x + (point.x - old.x) * alpha : point.x;
     const y = old ? old.y + (point.y - old.y) * alpha : point.y;
     const z = old ? old.z + (point.z - old.z) * alpha : point.z;
-    const speed = old ? clamp(Math.hypot(point.x - old.x, point.y - old.y, (point.z - old.z) * 0.5) / dt / 2.8, 0, 1) : 0;
+    const vx = old ? clamp((point.x - old.x) / dt, -2.2, 2.2) : 0;
+    const vy = old ? clamp((point.y - old.y) / dt, -2.2, 2.2) : 0;
+    const vz = old ? clamp((point.z - old.z) / dt, -2.8, 2.8) : 0;
+    const speed = old ? clamp(Math.hypot(vx, vy, vz * 0.42) / 3.2, 0, 1) : 0;
     totalVelocity += speed;
-    smoothed.push({ x, y, z, speed });
+    smoothed.push({ x, y, z, speed, vx, vy, vz });
   }
 
   history.set(key, { timestamp, landmarks: smoothed });
