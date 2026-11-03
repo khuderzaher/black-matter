@@ -1,7 +1,7 @@
 {
   "name": "black-matter",
   "private": true,
-  "version": "0.3.2",
+  "version": "0.3.3",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
@@ -9,7 +9,7 @@
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
-    "@mediapipe/tasks-vision": "^1.2.0",
+    "@mediapipe/tasks-vision": "1.2.0",
     "three": "^0.187.0"
   },
   "devDependencies": {
