@@ -142,10 +142,10 @@ const vertexShader = `
       float pulse = 0.82 + 0.18 * sin(uTime * (1.15 + movementSpeed * 2.4) + float(i) * 0.63 + distanceSquared * 2.1);
       float polarity = mix(mix(-0.22, 0.48, uGesture), -0.82, uPinch);
       float ripple = sin(sqrt(max(distanceSquared, 0.0)) * 8.2 - uTime * (1.35 + movementSpeed * 3.8) + float(i) * 0.47);
-      vec3 motionWake = motion.xyz * (0.014 + movementSpeed * 0.018);
+      vec3 motionWake = motion.xyz * (0.034 + movementSpeed * 0.044);
       jointFlow += (radial * polarity + curl * (0.31 + uPinch * 0.22)) * field * pulse;
-      jointFlow += motionWake * field * (0.42 + accelerationPulse * 0.42);
-      jointFlow += curl * ripple * field * (0.018 + movementSpeed * 0.035 + accelerationPulse * 0.016);
+      jointFlow += motionWake * field * (0.62 + accelerationPulse * 0.62);
+      jointFlow += curl * ripple * field * (0.024 + movementSpeed * 0.048 + accelerationPulse * 0.02);
       jointInfluence = max(jointInfluence, field);
     }
 
