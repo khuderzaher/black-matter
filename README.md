@@ -9,12 +9,12 @@ An immersive, monochrome particle environment built with Three.js, custom GLSL s
 - Full-screen black environment with a volumetric field of up to 88,000 GPU-rendered particles.
 - A continuous five-stream spiral structure with layered motion and depth.
 - Pointer and touch interaction as a fallback and a way to explore the field immediately.
-- Optional camera-based hand tracking powered by MediaPipe Tasks Vision. Camera frames are processed locally in the browser; no video upload is implemented.
+- Optional camera-based hand tracking powered by MediaPipe Tasks Vision 1.2.x. Camera frames are processed locally in the browser; no video upload is implemented.
 - Responsive rendering with a device-aware particle budget.
 
 ## Run locally
 
-Requirements: Node.js 20.19+ or 22.12+.
+Requirements: Node.js 20.19+, 22.12+, or 24+.
 
 ```bash
 npm install
