@@ -1,16 +1,19 @@
 # BLACK MATTER
 
-An immersive, monochrome particle environment built with Three.js, custom GLSL shaders, and optional local hand tracking.
+An immersive spatial particle universe built with Three.js, custom GLSL shaders, Unreal Bloom, and optional local hand-gesture recognition.
 
-**Status:** 0.1.0 — Particle Core
+**Status:** 0.2.0 — Spatial Nebula
 
 ## Experience
 
-- Full-screen black environment with a volumetric field of up to 88,000 GPU-rendered particles.
-- A continuous five-stream spiral structure with layered motion and depth.
-- Pointer and touch interaction as a fallback and a way to explore the field immediately.
-- Optional camera-based hand tracking powered by MediaPipe Tasks Vision 1.2.x. Camera frames are processed locally in the browser; no video upload is implemented.
-- Responsive rendering with a device-aware particle budget.
+- A full-screen black environment with a volumetric field of GPU-rendered particles.
+- Multicolour nebula light in indigo, cyan, teal, lavender, rose, and warm amber.
+- A slow spacetime-lensing motion field and multi-layer depth.
+- Soft post-processing bloom for luminous particle halos.
+- Up to two tracked hands, with 21 landmarks per hand, world landmark data, handedness, finger articulation, motion estimates, and recognized gesture categories.
+- A subtle luminous hand constellation maps detected joints and bone connections into the 3D field.
+- Pointer and touch interaction remain available as a fallback.
+- Camera inference runs in a dedicated Web Worker; camera frames stay on-device.
 
 ## Run locally
 
@@ -34,20 +37,14 @@ The generated static site is written to `dist/`.
 
 ## GitHub Pages
 
-The included GitHub Actions workflow builds the site and publishes `dist/` to GitHub Pages. In the repository settings, set **Pages → Build and deployment → Source** to **GitHub Actions**.
+The GitHub Actions workflow builds the site and publishes `dist/`. Set **Settings → Pages → Build and deployment → Source** to **GitHub Actions**.
 
-The production base path is configured as `/black-matter/` for this repository.
+The production base path is configured as `/black-matter/`.
 
-## Controls
+## Hand tracking
 
-- Move the pointer or drag a finger across the canvas to disturb the field.
-- Select **Enable Hand Tracking** to request camera permission and use one hand to influence the particle volume.
-- Use **Esc** or the small corner control to return to the entry screen.
-
-## Technical notes
-
-The particle motion is evaluated in a vertex shader, avoiding thousands of individual JavaScript objects and keeping the animation work on the GPU. Hand landmark inference runs in a dedicated Web Worker. Camera frames are transferred as ImageBitmap objects at a bounded cadence, keeping model inference off the main render thread.
+The Gesture Recognizer returns 21 image landmarks, 21 world landmarks, handedness, and gesture categories. Landmark positions and finger openness shape the particle field; a light constellation shows the detected hand articulation. Detection supports up to two hands.
 
 ## Privacy
 
-The camera is optional. If enabled, the browser obtains a media stream and MediaPipe runs inference locally in a dedicated worker. Camera frames are transferred only to that worker; the application does not send them to a backend. Stopping the page stops the active media tracks.
+The camera is optional. When enabled, the browser obtains a media stream and transfers image frames to a dedicated local Web Worker for MediaPipe inference. No camera frames are uploaded to an application server. Stopping the experience stops the media tracks.
