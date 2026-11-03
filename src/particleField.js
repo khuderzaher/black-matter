@@ -4,6 +4,75 @@ const MAX_HANDS = 2;
 const LANDMARKS_PER_HAND = 21;
 const MAX_JOINTS = MAX_HANDS * LANDMARKS_PER_HAND;
 
+const nebulaVertexShader = `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const nebulaFragmentShader = `
+  uniform float uTime;
+  varying vec2 vUv;
+
+  float hash(vec2 p) {
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y);
+  }
+
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(
+      mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+      mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+      u.y
+    );
+  }
+
+  float fbm(vec2 p) {
+    float value = 0.0;
+    float amplitude = 0.5;
+    for (int i = 0; i < 4; i++) {
+      value += noise(p) * amplitude;
+      p = mat2(1.62, -1.18, 1.18, 1.62) * p + vec2(0.13, -0.17);
+      amplitude *= 0.5;
+    }
+    return value;
+  }
+
+  void main() {
+    vec2 uv = vUv;
+    vec2 drift = vec2(uTime * 0.006, -uTime * 0.004);
+    float broad = fbm(uv * 3.1 + drift);
+    float detail = fbm(uv * 6.4 - drift * 1.7 + broad * 0.55);
+    float wisps = fbm(uv * 10.2 + vec2(-uTime * 0.003, uTime * 0.005) + detail * 0.3);
+
+    float cloud = smoothstep(0.29, 0.76, broad * 0.66 + detail * 0.34);
+    float filament = smoothstep(0.58, 0.82, detail * 0.72 + wisps * 0.28);
+    vec2 centered = (uv - 0.5) * vec2(1.0, 0.88);
+    float envelope = pow(max(0.0, 1.0 - length(centered) * 1.42), 1.65);
+    float alpha = (cloud * 0.17 + filament * 0.065) * envelope;
+
+    float hue = fract(broad * 0.72 + uv.x * 0.16 + uv.y * 0.12 + uTime * 0.0015);
+    vec3 deepIndigo = vec3(0.12, 0.12, 0.36);
+    vec3 blue = vec3(0.10, 0.34, 0.57);
+    vec3 violet = vec3(0.36, 0.20, 0.49);
+    vec3 rose = vec3(0.48, 0.22, 0.38);
+    vec3 teal = vec3(0.11, 0.38, 0.37);
+    vec3 color = mix(deepIndigo, blue, smoothstep(0.05, 0.34, hue));
+    color = mix(color, teal, smoothstep(0.28, 0.54, hue) * 0.58);
+    color = mix(color, violet, smoothstep(0.46, 0.76, hue) * 0.8);
+    color = mix(color, rose, smoothstep(0.72, 0.96, hue) * 0.62);
+    color *= 0.75 + detail * 0.46;
+
+    gl_FragColor = vec4(color, alpha);
+  }
+`;
+
 const vertexShader = `
   attribute float aSeed;
   attribute float aSize;
@@ -257,6 +326,7 @@ export class ParticleField {
     this.points.frustumCulled = false;
     this.scene.add(this.points);
 
+    this.createNebula();
     this.createHandConstellation();
     this.createDistantStars();
   }
@@ -272,6 +342,25 @@ export class ParticleField {
     if (memory <= 4 || cores <= 4) return 42000;
     if (memory <= 8 || cores <= 8) return 76000;
     return 112000;
+  }
+
+  createNebula() {
+    this.nebulaGeometry = new THREE.PlaneGeometry(40, 24);
+    this.nebulaMaterial = new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0 } },
+      vertexShader: nebulaVertexShader,
+      fragmentShader: nebulaFragmentShader,
+      transparent: true,
+      depthWrite: false,
+      depthTest: true,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      toneMapped: false
+    });
+    this.nebula = new THREE.Mesh(this.nebulaGeometry, this.nebulaMaterial);
+    this.nebula.position.set(0, 0, -10.5);
+    this.nebula.renderOrder = -2;
+    this.scene.add(this.nebula);
   }
 
   createHandConstellation() {
@@ -507,6 +596,7 @@ export class ParticleField {
     this.interactionCurrent = THREE.MathUtils.damp(this.interactionCurrent, this.interactionTarget, 3.8, delta);
     this.energy = THREE.MathUtils.damp(this.energy, 0, 1.15, delta);
     this.uniforms.uTime.value = elapsed;
+    this.nebulaMaterial.uniforms.uTime.value = elapsed;
     this.uniforms.uPointer.value.copy(this.pointerCurrent);
     this.uniforms.uInteraction.value = this.interactionCurrent;
     this.handInteraction = THREE.MathUtils.damp(this.handInteraction, this.handInteractionTarget, 5.5, delta);
@@ -526,8 +616,10 @@ export class ParticleField {
   }
 
   dispose() {
-    this.scene.remove(this.points, this.handPoints, this.handLines, this.stars);
+    this.scene.remove(this.points, this.handPoints, this.handLines, this.stars, this.nebula);
     this.geometry.dispose();
+    this.nebulaGeometry.dispose();
+    this.nebulaMaterial.dispose();
     this.material.dispose();
     this.handPointsGeometry.dispose();
     this.handPointsMaterial.dispose();
