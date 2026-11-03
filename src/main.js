@@ -26,6 +26,7 @@ const previewEmpty = document.querySelector('#preview-empty');
 const sensorLatency = document.querySelector('#sensor-latency');
 const sensorFps = document.querySelector('#sensor-fps');
 const sensorHandCount = document.querySelector('#sensor-hand-count');
+const sensorFrames = document.querySelector('#sensor-frames');
 const sensorSummary = document.querySelector('#sensor-summary');
 const jointCount = document.querySelector('#joint-count');
 const jointReadout = document.querySelector('#joint-readout');
@@ -173,10 +174,11 @@ function syncInspectorStructure(hands) {
       const x = makeNode('span', 'joint-value', '—');
       const y = makeNode('span', 'joint-value', '—');
       const z = makeNode('span', 'joint-value', '—');
-      const velocity = makeNode('span', 'joint-value', '—');
-      row.append(index, name, x, y, z, velocity);
+        const velocity = makeNode('span', 'joint-value', '—');
+      const acceleration = makeNode('span', 'joint-value', '—');
+      row.append(index, name, x, y, z, velocity, acceleration);
       jointReadout.append(row);
-      jointValueNodes.push({ handIndex, landmarkIndex, x, y, z, velocity });
+      jointValueNodes.push({ handIndex, landmarkIndex, x, y, z, velocity, acceleration });
     }
   });
 
@@ -293,7 +295,8 @@ function updateInspectorReadout(hands = latestHands) {
     nodes.z.textContent = point.z.toFixed(3);
     const velocity = Math.hypot(point.vx || 0, point.vy || 0, (point.vz || 0) * 0.42);
     nodes.velocity.textContent = velocity.toFixed(2);
-    nodes.velocity.title = `Acceleration: ${(point.acceleration || 0).toFixed(2)} normalized units/s²`;
+    nodes.acceleration.textContent = (point.acceleration || 0).toFixed(2);
+    nodes.acceleration.title = 'Acceleration magnitude in normalized units/s²';
   });
 
   drawHandOverlay(hands);
@@ -316,6 +319,7 @@ function setCameraState(state, count = 0, hands = [], metrics = {}) {
   if (Number.isFinite(metrics.inferenceMs)) sensorLatency.textContent = `${metrics.inferenceMs} MS`;
   if (Number.isFinite(metrics.fps) && metrics.fps > 0) sensorFps.textContent = `${metrics.fps.toFixed(1)} FPS`;
   sensorHandCount.textContent = `${count} / 2`;
+  if (Number.isFinite(metrics.frames)) sensorFrames.textContent = String(metrics.frames);
   if (metrics.width && metrics.height) sensorResolution.textContent = `${metrics.width} × ${metrics.height} / ${count} HAND(S)`;
 
   if (state === 'loading') {
