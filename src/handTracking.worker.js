@@ -78,15 +78,29 @@ function buildHand(result, index, timestamp) {
   }
 
   history.set(key, { timestamp, landmarks: smoothed });
-  const { fingers, openness } = fingerOpenness(smoothed);
+  const { fingers, openness: measuredOpenness } = fingerOpenness(smoothed);
+  const gestureName = gesture.categoryName || 'Unknown';
+  const gestureScore = gesture.score ?? 0;
+  const gestureOpenness = {
+    Closed_Fist: 0.04,
+    Open_Palm: 0.98,
+    Pointing_Up: 0.74,
+    Victory: 0.84,
+    ILoveYou: 0.9,
+    Thumb_Up: 0.62,
+    Thumb_Down: 0.22
+  };
+  const openness = gestureScore >= 0.58 && gestureOpenness[gestureName] !== undefined
+    ? gestureOpenness[gestureName]
+    : measuredOpenness;
   const palm = [0, 5, 9, 13, 17].map((landmarkIndex) => smoothed[landmarkIndex]);
   const center = palm.reduce((sum, point) => ({ x: sum.x + point.x / 5, y: sum.y + point.y / 5 }), { x: 0, y: 0 });
 
   return {
     handedness: key,
     handednessScore: handedness.score ?? 0,
-    gesture: gesture.categoryName || 'Unknown',
-    gestureScore: gesture.score ?? 0,
+    gesture: gestureName,
+    gestureScore,
     openness,
     fingers,
     velocity: totalVelocity / 21,
@@ -104,7 +118,9 @@ function processFrame(bitmap, timestamp) {
   busy = true;
   try {
     const result = recognizer.recognizeForVideo(bitmap, timestamp);
-    const hands = (result.landmarks || []).slice(0, 2).map((_, index) => buildHand(result, index, timestamp));
+    const hands = (result.landmarks || []).slice(0, 2)
+      .map((_, index) => buildHand(result, index, timestamp))
+      .sort((a, b) => a.handedness.localeCompare(b.handedness));
     if (hands.length === 0) {
       history.clear();
     }
