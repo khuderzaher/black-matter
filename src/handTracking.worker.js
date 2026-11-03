@@ -10,7 +10,8 @@ const distance2D = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 async function initialize({ wasmUrl, modelUrl }) {
   const startedAt = performance.now();
-  const vision = await FilesetResolver.forVisionTasks(wasmUrl);
+  // This file runs as an ES module worker; request the ES-module WASM loader explicitly.
+  const vision = await FilesetResolver.forVisionTasks(wasmUrl, true);
 
   // Use MediaPipe's documented modelAssetPath loader. This avoids a separate
   // fetch/ArrayBuffer stage and lets the task runtime load the model itself.
