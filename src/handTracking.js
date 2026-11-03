@@ -24,6 +24,8 @@ export class HandTracking {
     this.lastInferenceMs = 0;
     this.framesProcessed = 0;
     this.handsDetected = 0;
+    this.previousResultAt = 0;
+    this.fps = 0;
   }
 
   async start() {
@@ -98,7 +100,13 @@ export class HandTracking {
 
       if (data?.type === 'hands') {
         this.framePending = false;
-        this.lastResultAt = performance.now();
+        const resultAt = performance.now();
+        if (this.previousResultAt) {
+          const instantaneousFps = 1000 / Math.max(1, resultAt - this.previousResultAt);
+          this.fps = this.fps ? this.fps * 0.78 + instantaneousFps * 0.22 : instantaneousFps;
+        }
+        this.previousResultAt = resultAt;
+        this.lastResultAt = resultAt;
         this.lastInferenceMs = data.inferenceMs || 0;
         this.framesProcessed += 1;
         this.handsDetected = data.hands?.length || 0;
@@ -106,6 +114,7 @@ export class HandTracking {
         this.onState('tracking', this.handsDetected, data.hands || [], {
           backend: 'CPU',
           inferenceMs: this.lastInferenceMs,
+          fps: this.fps,
           frames: this.framesProcessed,
           width: this.video.videoWidth,
           height: this.video.videoHeight
