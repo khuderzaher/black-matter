@@ -107,14 +107,20 @@ cameraButton.addEventListener('click', async () => {
   setExperienceStarted(true);
   await enableCamera();
 });
-exitButton.addEventListener('click', () => {
+function exitExperience() {
+  handTracking?.stop();
+  handTracking = null;
   setExperienceStarted(false);
-  cameraButton.textContent = handTracking?.running ? 'HAND TRACKING ENABLED' : 'ENABLE HAND TRACKING';
-  setCameraState(handTracking?.running ? 'live' : 'off');
-});
+  cameraButton.disabled = false;
+  cameraButton.textContent = 'ENABLE HAND TRACKING';
+  permissionNote.textContent = 'Camera access is optional. Video is processed locally in your browser.';
+  setCameraState('off');
+}
+
+exitButton.addEventListener('click', exitExperience);
 
 window.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && experienceStarted) setExperienceStarted(false);
+  if (event.key === 'Escape' && experienceStarted) exitExperience();
 });
 
 function resize() {
