@@ -2,7 +2,7 @@
 
 An immersive spatial particle universe built with Three.js, custom GLSL shaders, Unreal Bloom, and optional local hand-gesture recognition.
 
-**Status:** 0.3.2 — MediaPipe Camera Diagnostics
+**Status:** 0.3.3 — MediaPipe Module Worker Fix
 
 ## Experience
 
