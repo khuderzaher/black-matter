@@ -516,7 +516,7 @@ export class ParticleField {
           this.handCurrentPositions[offset + 1] = 1000;
           this.handCurrentPositions[offset + 2] = 1000;
           this.jointUniforms[slot].set(0, 0, 0, 0);
-        } else if (!this.handSlotActive[handSlot]) {
+        } else if (!this.handSlotActive[handIndex]) {
           this.handCurrentPositions[offset] = this.handTargetPositions[offset];
           this.handCurrentPositions[offset + 1] = this.handTargetPositions[offset + 1];
           this.handCurrentPositions[offset + 2] = this.handTargetPositions[offset + 2];
