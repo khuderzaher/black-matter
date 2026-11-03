@@ -23,6 +23,7 @@ const sensorStatus = document.querySelector('#sensor-status');
 const sensorPreview = document.querySelector('#sensor-preview');
 const handOverlay = document.querySelector('#hand-overlay');
 const previewEmpty = document.querySelector('#preview-empty');
+const sensorEnableCamera = document.querySelector('#sensor-enable-camera');
 const sensorLatency = document.querySelector('#sensor-latency');
 const sensorFps = document.querySelector('#sensor-fps');
 const sensorHandCount = document.querySelector('#sensor-hand-count');
@@ -379,7 +380,10 @@ function setCameraState(state, count = 0, hands = [], metrics = {}) {
   if (inspectorOpen) updateInspectorReadout(latestHands);
 }
 async function enableCamera() {
+  if (handTracking?.running) return;
   cameraButton.disabled = true;
+  sensorEnableCamera.disabled = true;
+  sensorEnableCamera.textContent = 'INITIALIZING…';
   cameraButton.textContent = 'INITIALIZING SPATIAL SENSING…';
   try {
     handTracking = new HandTracking(video, onHands, setCameraState);
@@ -393,6 +397,8 @@ async function enableCamera() {
     handTracking = null;
     cameraButton.disabled = false;
     cameraButton.textContent = 'TRY HAND TRACKING AGAIN';
+    sensorEnableCamera.disabled = false;
+    sensorEnableCamera.textContent = 'TRY AGAIN';
     const detail = error?.message || 'Hand tracking failed. Pointer and touch interaction remain available.';
     permissionNote.textContent = detail;
     setCameraState('error', 0, [], { message: detail });
@@ -423,6 +429,10 @@ function exitExperience() {
 exitButton.addEventListener('click', exitExperience);
 sensorToggle.addEventListener('click', () => setInspectorOpen(!inspectorOpen));
 sensorClose.addEventListener('click', () => setInspectorOpen(false));
+sensorEnableCamera.addEventListener('click', async () => {
+  setExperienceStarted(true);
+  await enableCamera();
+});
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && inspectorOpen) {
     setInspectorOpen(false);
