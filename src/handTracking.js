@@ -1,6 +1,6 @@
 import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 
-const WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm';
+const WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.0/wasm';
 const MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
 
 export class HandTracking {
@@ -38,14 +38,25 @@ export class HandTracking {
     await this.video.play();
 
     const vision = await FilesetResolver.forVisionTasks(WASM_URL);
-    this.landmarker = await HandLandmarker.createFromOptions(vision, {
+    const options = {
       baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },
       runningMode: 'VIDEO',
       numHands: 2,
       minHandDetectionConfidence: 0.55,
       minHandPresenceConfidence: 0.5,
       minTrackingConfidence: 0.5
-    });
+    };
+
+    try {
+      this.landmarker = await HandLandmarker.createFromOptions(vision, options);
+    } catch (gpuError) {
+      // Some mobile GPUs and privacy-restricted browsers cannot initialize the GPU delegate.
+      console.warn('Black Matter: GPU hand inference unavailable; falling back to CPU.', gpuError);
+      this.landmarker = await HandLandmarker.createFromOptions(vision, {
+        ...options,
+        baseOptions: { modelAssetPath: MODEL_URL, delegate: 'CPU' }
+      });
+    }
 
     this.running = true;
     this.onState('live');
