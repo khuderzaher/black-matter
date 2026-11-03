@@ -74,16 +74,30 @@ function buildHand(result, index, timestamp) {
   for (let pointIndex = 0; pointIndex < 21; pointIndex += 1) {
     const point = raw[pointIndex];
     const old = previous?.landmarks?.[pointIndex];
-    const alpha = old ? 0.42 : 1;
-    const x = old ? old.x + (point.x - old.x) * alpha : point.x;
-    const y = old ? old.y + (point.y - old.y) * alpha : point.y;
-    const z = old ? old.z + (point.z - old.z) * alpha : point.z;
-    const vx = old ? clamp((point.x - old.x) / dt, -2.2, 2.2) : 0;
-    const vy = old ? clamp((point.y - old.y) / dt, -2.2, 2.2) : 0;
-    const vz = old ? clamp((point.z - old.z) / dt, -2.8, 2.8) : 0;
-    const speed = old ? clamp(Math.hypot(vx, vy, vz * 0.42) / 3.2, 0, 1) : 0;
+    const rawX = old?.rawX ?? old?.x ?? point.x;
+    const rawY = old?.rawY ?? old?.y ?? point.y;
+    const rawZ = old?.rawZ ?? old?.z ?? point.z;
+    const rawVx = old ? clamp((point.x - rawX) / dt, -3.5, 3.5) : 0;
+    const rawVy = old ? clamp((point.y - rawY) / dt, -3.5, 3.5) : 0;
+    const rawVz = old ? clamp((point.z - rawZ) / dt, -4.0, 4.0) : 0;
+    const vx = old ? clamp((old.vx || 0) * 0.58 + rawVx * 0.42, -3.2, 3.2) : 0;
+    const vy = old ? clamp((old.vy || 0) * 0.58 + rawVy * 0.42, -3.2, 3.2) : 0;
+    const vz = old ? clamp((old.vz || 0) * 0.58 + rawVz * 0.42, -3.8, 3.8) : 0;
+    const displacement = old ? Math.hypot(point.x - old.x, point.y - old.y, (point.z - old.z) * 0.4) : 0;
+    const response = old ? clamp(0.2 + displacement * 7.5 + Math.hypot(vx, vy) * 0.035, 0.2, 0.68) : 1;
+    const x = old ? old.x + (point.x - old.x) * response : point.x;
+    const y = old ? old.y + (point.y - old.y) * response : point.y;
+    const z = old ? old.z + (point.z - old.z) * response : point.z;
+    const rawAx = old ? (vx - (old.vx || 0)) / dt : 0;
+    const rawAy = old ? (vy - (old.vy || 0)) / dt : 0;
+    const rawAz = old ? (vz - (old.vz || 0)) / dt : 0;
+    const ax = old ? clamp((old.ax || 0) * 0.62 + rawAx * 0.38, -10, 10) : 0;
+    const ay = old ? clamp((old.ay || 0) * 0.62 + rawAy * 0.38, -10, 10) : 0;
+    const az = old ? clamp((old.az || 0) * 0.62 + rawAz * 0.38, -12, 12) : 0;
+    const speed = old ? clamp(Math.hypot(vx, vy, vz * 0.42) / 1.7, 0, 1) : 0;
+    const acceleration = Math.hypot(ax, ay, az * 0.42);
     totalVelocity += speed;
-    smoothed.push({ x, y, z, speed, vx, vy, vz });
+    smoothed.push({ x, y, z, speed, vx, vy, vz, ax, ay, az, acceleration, rawX: point.x, rawY: point.y, rawZ: point.z });
   }
 
   history.set(key, { timestamp, landmarks: smoothed });
