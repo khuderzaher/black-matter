@@ -1,7 +1,7 @@
 const WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.0/wasm';
 const MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task';
 const FRAME_INTERVAL_MS = 72;
-const FRAME_WATCHDOG_MS = 5000;
+const FRAME_WATCHDOG_MS = 15000;
 
 export class HandTracking {
   constructor(video, onHands, onState) {
@@ -144,14 +144,22 @@ export class HandTracking {
 
     this.worker.postMessage({ type: 'init', wasmUrl: WASM_URL, modelUrl: MODEL_URL });
 
+    let timeoutId;
     const timeout = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Hand recognition took too long to initialize. Check the network connection and reload the page.')), 25000);
+      timeoutId = setTimeout(
+        () => reject(new Error('MediaPipe did not finish loading within 60 seconds. Check the connection to the model and WASM hosts, then retry.')),
+        60000
+      );
     });
 
-    const readyInfo = await Promise.race([ready, timeout]);
-    this.resolveReady = null;
-    this.rejectReady = null;
-    return readyInfo;
+    try {
+      const readyInfo = await Promise.race([ready, timeout]);
+      this.resolveReady = null;
+      this.rejectReady = null;
+      return readyInfo;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   async recoverWorker(reason) {
@@ -165,7 +173,7 @@ export class HandTracking {
     this.restartCount += 1;
     this.framePending = false;
     this.lastVideoTime = -1;
-    this.onState('recovering', 0, [], { message: 'Reconnecting the hand-recognition engine…' });
+    this.onState('recovering', 0, [], { message: `Recognition worker stalled: ${reason}. Reconnecting once…` });
     this.worker?.terminate();
     this.worker = null;
 
