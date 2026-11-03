@@ -64,6 +64,8 @@ button { font: inherit; }
 .is-immersive .camera-state { opacity: .58; }
 .camera-state.is-warning { color: rgba(255, 202, 170, .82); }
 .camera-state.is-warning .state-dot { background: #f0b18c; box-shadow: 0 0 12px rgba(240,177,140,.65); }
+.camera-state { max-width: calc(100% - 44px); }
+#camera-label { overflow-wrap: anywhere; line-height: 1.55; }
 .state-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.45); box-shadow: 0 0 12px rgba(255,255,255,.35); }
 .camera-state.is-live .state-dot { background: #c5efe3; box-shadow: 0 0 12px rgba(180,255,220,.7); }
 .exit-button {
