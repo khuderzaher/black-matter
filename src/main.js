@@ -88,15 +88,37 @@ function onHands(hands) {
   field.setHands(hands);
 }
 
-function setCameraState(state, count = 0, hands = []) {
-  cameraState.classList.toggle('is-live', state === 'live' || state === 'tracking');
-  if (state === 'loading') cameraLabel.textContent = 'PREPARING SPATIAL SENSING';
-  else if (state === 'live') cameraLabel.textContent = 'HAND SENSING READY';
-  else if (state === 'tracking') {
+function setCameraState(state, count = 0, hands = [], metrics = {}) {
+  const active = state === 'live' || state === 'tracking' || state === 'muted' || state === 'warning';
+  cameraState.classList.toggle('is-live', active);
+  cameraState.classList.toggle('is-warning', state === 'warning' || state === 'muted' || state === 'error');
+
+  if (state === 'loading') {
+    cameraLabel.textContent = 'STARTING CAMERA AND MODEL';
+  } else if (state === 'live') {
+    cameraLabel.textContent = 'CAMERA LIVE · WAITING FOR FIRST RESULT';
+    if (metrics.message) permissionNote.textContent = metrics.message;
+  } else if (state === 'tracking') {
     const details = hands.map((hand) => hand.gesture.replaceAll('_', ' ')).join(' · ');
-    cameraLabel.textContent = count > 0 ? `${count} HAND${count > 1 ? 'S' : ''} · ${details}` : 'SEARCHING FOR HANDS';
-  } else if (state === 'error') cameraLabel.textContent = 'CAMERA UNAVAILABLE';
-  else cameraLabel.textContent = 'POINTER FIELD';
+    const inference = Number.isFinite(metrics.inferenceMs) ? ` · ${metrics.inferenceMs} MS` : '';
+    cameraLabel.textContent = count > 0
+      ? `${count} HAND${count > 1 ? 'S' : ''} · ${details}${inference}`
+      : `CAMERA LIVE · NO HAND DETECTED${inference}`;
+    if (metrics.frames) permissionNote.textContent = `Live analysis · ${metrics.frames} frames processed · ${metrics.width || 0}×${metrics.height || 0} camera`;
+  } else if (state === 'recovering') {
+    cameraLabel.textContent = 'RESTARTING HAND ENGINE';
+    if (metrics.message) permissionNote.textContent = metrics.message;
+  } else if (state === 'warning' || state === 'muted') {
+    cameraLabel.textContent = state === 'muted' ? 'CAMERA STREAM PAUSED' : 'FRAME ANALYSIS WARNING';
+    if (metrics.message) permissionNote.textContent = metrics.message;
+  } else if (state === 'error') {
+    cameraLabel.textContent = 'HAND TRACKING STOPPED';
+    permissionNote.textContent = metrics.message || 'The camera or recognition worker stopped. Tap retry to reconnect.';
+    cameraButton.disabled = false;
+    cameraButton.textContent = 'RETRY HAND TRACKING';
+  } else {
+    cameraLabel.textContent = 'POINTER FIELD';
+  }
 }
 
 async function enableCamera() {
@@ -107,7 +129,7 @@ async function enableCamera() {
     await handTracking.start();
     cameraButton.textContent = 'SPATIAL SENSING ACTIVE';
     cameraButton.disabled = false;
-    permissionNote.textContent = 'Up to two hands · 21 landmarks each · local camera processing only.';
+    permissionNote.textContent = 'Camera connected. Waiting for live hand landmarks…';
   } catch (error) {
     console.error('Black Matter hand sensing failed:', error);
     handTracking?.stop();
@@ -172,6 +194,5 @@ window.addEventListener('pagehide', () => {
   renderer.dispose();
 }, { once: true });
 
-document.addEventListener('fullscreenchange', () => {
-  if (experienceStarted && !document.fullscreenElement) exitExperience();
-});
+// Leaving browser fullscreen must not terminate the camera stream or the recognition worker.
+document.addEventListener('fullscreenchange', resize);
