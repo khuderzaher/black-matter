@@ -46,8 +46,8 @@ The production base path is configured as `/black-matter/` for this repository.
 
 ## Technical notes
 
-The particle motion is evaluated in a vertex shader, avoiding thousands of individual JavaScript objects and keeping the animation work on the GPU. Hand landmark inference is intentionally throttled independently from rendering so a slower camera inference loop does not dictate the visual frame rate.
+The particle motion is evaluated in a vertex shader, avoiding thousands of individual JavaScript objects and keeping the animation work on the GPU. Hand landmark inference runs in a dedicated Web Worker. Camera frames are transferred as ImageBitmap objects at a bounded cadence, keeping model inference off the main render thread.
 
 ## Privacy
 
-The camera is optional. If enabled, the browser obtains a media stream and MediaPipe runs inference locally. The application does not send camera frames to a backend. Stopping the page stops the active media tracks.
+The camera is optional. If enabled, the browser obtains a media stream and MediaPipe runs inference locally in a dedicated worker. Camera frames are transferred only to that worker; the application does not send them to a backend. Stopping the page stops the active media tracks.
