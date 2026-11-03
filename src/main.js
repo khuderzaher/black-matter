@@ -313,7 +313,11 @@ function updateInspectorReadout(hands = latestHands) {
     nodes.velocity.textContent = velocity.toFixed(2);
     nodes.acceleration.textContent = (point.acceleration || 0).toFixed(2);
     nodes.acceleration.title = 'Acceleration magnitude in normalized units/s²';
-    nodes.detail.textContent = `V (${(point.vx || 0).toFixed(3)}, ${(point.vy || 0).toFixed(3)}, ${(point.vz || 0).toFixed(3)}) · A (${(point.ax || 0).toFixed(2)}, ${(point.ay || 0).toFixed(2)}, ${(point.az || 0).toFixed(2)})`;
+    const world = hands[nodes.handIndex]?.worldLandmarks?.[nodes.landmarkIndex];
+    const worldText = world
+      ? `W (${world.x.toFixed(3)}, ${world.y.toFixed(3)}, ${world.z.toFixed(3)}) m`
+      : 'W unavailable';
+    nodes.detail.textContent = `${worldText} · V (${(point.vx || 0).toFixed(3)}, ${(point.vy || 0).toFixed(3)}, ${(point.vz || 0).toFixed(3)}) · A (${(point.ax || 0).toFixed(2)}, ${(point.ay || 0).toFixed(2)}, ${(point.az || 0).toFixed(2)})`;
   });
 
   drawHandOverlay(hands);
