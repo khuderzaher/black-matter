@@ -2,7 +2,7 @@
 
 An immersive spatial particle universe built with Three.js, custom GLSL shaders, Unreal Bloom, and optional local hand-gesture recognition.
 
-**Status:** 0.3.3 — MediaPipe Module Worker Fix
+**Status:** 0.3.4 — Live Sensor Inspector & Motion Field
 
 ## Experience
 
@@ -11,7 +11,8 @@ An immersive spatial particle universe built with Three.js, custom GLSL shaders,
 - A slow spacetime-lensing motion field, an animated fractal nebula backdrop, and multi-layer depth.
 - Soft post-processing bloom for luminous particle halos.
 - Up to two tracked hands, with 21 landmarks per hand, world landmark data, handedness, finger articulation, motion estimates, and recognized gesture categories.
-- A subtle luminous hand constellation maps detected joints and bone connections into the 3D field.
+- A collapsible live sensor inspector shows the mirrored camera feed, 21-joint hand skeleton, live coordinates, per-joint velocity and acceleration, inference latency, frame rate, and processed-frame count.
+- A subtle luminous hand constellation maps detected joints and bone connections into the 3D field. Filtered joint velocity and acceleration drive directional particle wakes, soft ripples, and gesture-controlled condensation/expansion.
 - Pointer and touch interaction remain available as a fallback. The experience requests browser fullscreen from the entry action when supported.
 - Camera inference runs in a dedicated Web Worker using the CPU delegate for more predictable mobile-browser operation. The camera loop monitors track state, frame transfer, inference results, and worker stalls; it attempts one worker recovery before reporting a visible error.
 
@@ -43,11 +44,11 @@ The production base path is configured as `/black-matter/`.
 
 ## Camera diagnostics
 
-The experience reports whether the camera is live, whether frames have been analysed, and the most recent inference time. A stalled worker is restarted once. Leaving browser fullscreen no longer stops the camera session.
+A small sensor icon opens a compact, closable diagnostics window without stopping the experience. It displays the live mirrored camera preview with the recognised skeleton aligned to the camera crop. Each detected hand exposes all 21 landmark coordinates (normalised image X/Y and relative depth Z), velocity, and acceleration, alongside gesture confidence, pinch, openness, inference time, smoothed inference FPS, camera resolution, and processed-frame count. The preview and all analysis run locally in the browser.
 
 ## Hand tracking
 
-The Gesture Recognizer returns 21 image landmarks, 21 world landmarks, handedness, and gesture categories. Recognized poses such as Open Palm and Closed Fist map to distinct expansion and contraction responses. Landmark positions, world-depth coordinates, per-joint velocity, finger openness, and thumb-index pinch distance shape the particle field; a light constellation shows detected articulation. Detection supports up to two hands.
+The Gesture Recognizer returns 21 image landmarks, 21 world landmarks, handedness, and gesture categories. Recognized poses such as Open Palm and Closed Fist map to distinct expansion and contraction responses. Landmark positions, world-depth coordinates, adaptive temporal smoothing, per-joint velocity and acceleration, finger openness, and thumb-index pinch distance shape the particle field; a light constellation shows detected articulation. Detection supports up to two hands.
 
 ## Privacy
 
