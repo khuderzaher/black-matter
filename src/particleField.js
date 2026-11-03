@@ -227,6 +227,9 @@ export class ParticleField {
     this.jointTargets = Array.from({ length: MAX_JOINTS }, () => new THREE.Vector4());
     this.handTargetPositions = new Float32Array(MAX_JOINTS * 3);
     this.handCurrentPositions = new Float32Array(MAX_JOINTS * 3);
+    this.handTargetPositions.fill(1000);
+    this.handCurrentPositions.fill(1000);
+    this.handSlotActive = [false, false];
     this.handVisibilityTarget = 0;
     this.handVisibility = 0;
 
@@ -378,11 +381,13 @@ export class ParticleField {
     let activeHands = 0;
 
     this.jointTargets.forEach((joint) => joint.set(0, 0, 0, 0));
-    this.handTargetPositions.fill(0);
+    this.handTargetPositions.fill(1000);
+    const nextActiveSlots = [false, false];
 
     usableHands.forEach((hand, handIndex) => {
       if (!Array.isArray(hand.landmarks) || hand.landmarks.length < LANDMARKS_PER_HAND) return;
       activeHands += 1;
+      nextActiveSlots[handIndex] = true;
       opennessTotal += hand.openness ?? 0.5;
 
       hand.landmarks.slice(0, LANDMARKS_PER_HAND).forEach((landmark, index) => {
@@ -407,6 +412,30 @@ export class ParticleField {
       });
     });
 
+    // Keep unused hand slots outside the view; snap newly acquired hands into place.
+    for (let handIndex = 0; handIndex < MAX_HANDS; handIndex += 1) {
+      const base = handIndex * LANDMARKS_PER_HAND;
+      for (let index = 0; index < LANDMARKS_PER_HAND; index += 1) {
+        const slot = base + index;
+        const offset = slot * 3;
+        if (!nextActiveSlots[handIndex]) {
+          this.handTargetPositions[offset] = 1000;
+          this.handTargetPositions[offset + 1] = 1000;
+          this.handTargetPositions[offset + 2] = 1000;
+          this.handCurrentPositions[offset] = 1000;
+          this.handCurrentPositions[offset + 1] = 1000;
+          this.handCurrentPositions[offset + 2] = 1000;
+          this.jointUniforms[slot].set(0, 0, 0, 0);
+        } else if (!this.handSlotActive[handIndex]) {
+          this.handCurrentPositions[offset] = this.handTargetPositions[offset];
+          this.handCurrentPositions[offset + 1] = this.handTargetPositions[offset + 1];
+          this.handCurrentPositions[offset + 2] = this.handTargetPositions[offset + 2];
+          this.jointUniforms[slot].copy(this.jointTargets[slot]);
+        }
+      }
+    }
+    this.handSlotActive = nextActiveSlots;
+
     this.handVisibilityTarget = activeHands > 0 ? 1 : 0;
     this.handInteractionTarget = activeHands > 0 ? 1 : 0;
     this.interactionTarget = 0;
@@ -427,7 +456,11 @@ export class ParticleField {
     this.interactionTarget = 0;
     this.handInteractionTarget = 0;
     this.handVisibilityTarget = 0;
+    this.handSlotActive = [false, false];
+    this.handTargetPositions.fill(1000);
+    this.handCurrentPositions.fill(1000);
     this.jointTargets.forEach((joint) => joint.set(0, 0, 0, 0));
+    this.jointUniforms.forEach((joint) => joint.set(0, 0, 0, 0));
   }
 
   updateHandConstellation(delta) {
