@@ -209,6 +209,15 @@ button { font: inherit; }
 .joint-index { color: rgba(157,207,223,.65); }
 .joint-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: rgba(227,231,250,.75); }
 .joint-value { color: rgba(180,197,228,.64); text-align: right; }
+.joint-row { cursor: pointer; outline: none; }
+.joint-row:focus-visible { background: rgba(162,150,231,.12); }
+.joint-row.is-expanded { background: rgba(136,126,209,.09); }
+.joint-detail {
+  display: none; grid-column: 1 / -1; padding: 2px 0 5px 23px;
+  color: rgba(168,201,224,.68); font: 6px 'DM Mono', monospace;
+  letter-spacing: .02em; white-space: normal; overflow-wrap: anywhere;
+}
+.joint-row.is-expanded .joint-detail { display: block; }
 .sensor-panel-foot {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   min-height: 28px; padding: 6px 12px; border-top: 1px solid rgba(255,255,255,.065);
