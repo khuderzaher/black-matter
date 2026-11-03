@@ -2,17 +2,17 @@
 
 An immersive spatial particle universe built with Three.js, custom GLSL shaders, Unreal Bloom, and optional local hand-gesture recognition.
 
-**Status:** 0.2.0 — Spatial Nebula
+**Status:** 0.3.0 — Spatial Nebula & Gesture Field
 
 ## Experience
 
 - A full-screen black environment with a volumetric field of GPU-rendered particles.
 - Multicolour nebula light in indigo, cyan, teal, lavender, rose, and warm amber.
-- A slow spacetime-lensing motion field and multi-layer depth.
+- A slow spacetime-lensing motion field, an animated fractal nebula backdrop, and multi-layer depth.
 - Soft post-processing bloom for luminous particle halos.
 - Up to two tracked hands, with 21 landmarks per hand, world landmark data, handedness, finger articulation, motion estimates, and recognized gesture categories.
 - A subtle luminous hand constellation maps detected joints and bone connections into the 3D field.
-- Pointer and touch interaction remain available as a fallback.
+- Pointer and touch interaction remain available as a fallback. The experience requests browser fullscreen from the entry action when supported.
 - Camera inference runs in a dedicated Web Worker; camera frames stay on-device.
 
 ## Run locally
@@ -43,7 +43,7 @@ The production base path is configured as `/black-matter/`.
 
 ## Hand tracking
 
-The Gesture Recognizer returns 21 image landmarks, 21 world landmarks, handedness, and gesture categories. Landmark positions and finger openness shape the particle field; a light constellation shows the detected hand articulation. Detection supports up to two hands.
+The Gesture Recognizer returns 21 image landmarks, 21 world landmarks, handedness, and gesture categories. Recognized poses such as Open Palm and Closed Fist map to distinct expansion and contraction responses. Landmark positions, per-joint velocity, and finger openness shape the particle field; a light constellation shows detected articulation. Detection supports up to two hands.
 
 ## Privacy
 
