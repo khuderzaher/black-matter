@@ -53,6 +53,15 @@ let experienceStarted = false;
 let handTracking = null;
 let disposed = false;
 
+function requestImmersiveFullscreen() {
+  const root = document.documentElement;
+  if (!document.fullscreenElement && typeof root.requestFullscreen === 'function') {
+    root.requestFullscreen({ navigationUI: 'hide' }).catch(() => {
+      // Fullscreen is an enhancement; the experience remains usable when it is denied.
+    });
+  }
+}
+
 function setExperienceStarted(started) {
   experienceStarted = started;
   intro.classList.toggle('is-hidden', started);
@@ -110,13 +119,18 @@ async function enableCamera() {
   }
 }
 
-enterButton.addEventListener('click', () => setExperienceStarted(true));
+enterButton.addEventListener('click', () => {
+  requestImmersiveFullscreen();
+  setExperienceStarted(true);
+});
 cameraButton.addEventListener('click', async () => {
+  requestImmersiveFullscreen();
   setExperienceStarted(true);
   await enableCamera();
 });
 
 function exitExperience() {
+  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
   handTracking?.stop();
   handTracking = null;
   setExperienceStarted(false);
@@ -157,3 +171,7 @@ window.addEventListener('pagehide', () => {
   composer.dispose();
   renderer.dispose();
 }, { once: true });
+
+document.addEventListener('fullscreenchange', () => {
+  if (experienceStarted && !document.fullscreenElement) exitExperience();
+});
