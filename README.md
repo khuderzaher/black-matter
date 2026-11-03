@@ -43,7 +43,7 @@ The production base path is configured as `/black-matter/`.
 
 ## Hand tracking
 
-The Gesture Recognizer returns 21 image landmarks, 21 world landmarks, handedness, and gesture categories. Recognized poses such as Open Palm and Closed Fist map to distinct expansion and contraction responses. Landmark positions, per-joint velocity, and finger openness shape the particle field; a light constellation shows detected articulation. Detection supports up to two hands.
+The Gesture Recognizer returns 21 image landmarks, 21 world landmarks, handedness, and gesture categories. Recognized poses such as Open Palm and Closed Fist map to distinct expansion and contraction responses. Landmark positions, world-depth coordinates, per-joint velocity, finger openness, and thumb-index pinch distance shape the particle field; a light constellation shows detected articulation. Detection supports up to two hands.
 
 ## Privacy
 
