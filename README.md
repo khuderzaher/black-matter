@@ -2,7 +2,7 @@
 
 An immersive spatial particle universe built with Three.js, custom GLSL shaders, Unreal Bloom, and optional local hand-gesture recognition.
 
-**Status:** 0.3.5 — Live Sensor Inspector & Motion Field
+**Status:** 0.3.6 — Live Sensor Inspector & 3D Joint Telemetry
 
 ## Experience
 
@@ -44,7 +44,7 @@ The production base path is configured as `/black-matter/`.
 
 ## Camera diagnostics
 
-A small sensor icon opens a compact, closable diagnostics window without stopping the experience. It displays the live mirrored camera preview with the recognised skeleton aligned to the camera crop. Each detected hand exposes all 21 landmark coordinates (normalised image X/Y and relative depth Z), velocity, and acceleration, alongside gesture confidence, pinch, openness, inference time, smoothed inference FPS, camera resolution, and processed-frame count. The preview and all analysis run locally in the browser.
+A small sensor icon opens a compact, closable diagnostics window without stopping the experience. It displays the live mirrored camera preview with the recognised skeleton aligned to the camera crop. Each detected hand exposes all 21 landmark coordinates (normalised image X/Y and relative depth Z), camera-pixel positions, hand-centred 3D world coordinates in metres, per-joint velocity and acceleration vectors, alongside gesture confidence, pinch, openness, inference time, smoothed inference FPS, camera resolution, and processed-frame count. Tap a joint row to expand its 3D and motion vectors. The preview and all analysis run locally in the browser.
 
 ## Hand tracking
 
