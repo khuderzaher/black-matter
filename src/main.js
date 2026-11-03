@@ -176,9 +176,24 @@ function syncInspectorStructure(hands) {
       const z = makeNode('span', 'joint-value', '—');
         const velocity = makeNode('span', 'joint-value', '—');
       const acceleration = makeNode('span', 'joint-value', '—');
-      row.append(index, name, x, y, z, velocity, acceleration);
+      const detail = makeNode('span', 'joint-detail', 'Velocity and acceleration vectors');
+      row.append(index, name, x, y, z, velocity, acceleration, detail);
+      row.tabIndex = 0;
+      row.setAttribute('role', 'button');
+      row.setAttribute('aria-expanded', 'false');
+      const toggleDetail = () => {
+        const expanded = row.classList.toggle('is-expanded');
+        row.setAttribute('aria-expanded', String(expanded));
+      };
+      row.addEventListener('click', toggleDetail);
+      row.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          toggleDetail();
+        }
+      });
       jointReadout.append(row);
-      jointValueNodes.push({ handIndex, landmarkIndex, x, y, z, velocity, acceleration });
+      jointValueNodes.push({ handIndex, landmarkIndex, x, y, z, velocity, acceleration, detail });
     }
   });
 
@@ -297,6 +312,7 @@ function updateInspectorReadout(hands = latestHands) {
     nodes.velocity.textContent = velocity.toFixed(2);
     nodes.acceleration.textContent = (point.acceleration || 0).toFixed(2);
     nodes.acceleration.title = 'Acceleration magnitude in normalized units/s²';
+    nodes.detail.textContent = `V (${(point.vx || 0).toFixed(3)}, ${(point.vy || 0).toFixed(3)}, ${(point.vz || 0).toFixed(3)}) · A (${(point.ax || 0).toFixed(2)}, ${(point.ay || 0).toFixed(2)}, ${(point.az || 0).toFixed(2)})`;
   });
 
   drawHandOverlay(hands);
