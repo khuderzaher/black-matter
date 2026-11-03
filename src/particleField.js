@@ -82,6 +82,7 @@ const vertexShader = `
   uniform float uInteraction;
   uniform float uHandInteraction;
   uniform float uGesture;
+  uniform float uPinch;
   uniform vec3 uPointer;
   uniform float uEnergy;
   uniform vec4 uJoints[${MAX_JOINTS}];
@@ -130,12 +131,13 @@ const vertexShader = `
       float active = step(0.015, joint.w);
       vec3 delta = p - joint.xyz;
       float distanceSquared = dot(delta, delta);
-      float influenceRadius = mix(0.24, 0.62, clamp(joint.w, 0.0, 1.0));
+      float influenceRadius = mix(0.24, 0.62, clamp(joint.w, 0.0, 1.0)) * mix(1.0, 0.68, uPinch);
       float field = exp(-distanceSquared / (influenceRadius * influenceRadius)) * joint.w * active * uHandInteraction;
       vec3 radial = normalize(delta + vec3(0.0001));
       vec3 curl = normalize(vec3(-delta.y, delta.x, 0.18 + delta.z * 0.16));
       float pulse = 0.78 + 0.22 * sin(uTime * 1.4 + float(i) * 0.63 + distanceSquared * 2.1);
-      jointFlow += (radial * mix(-0.22, 0.48, uGesture) + curl * 0.33) * field * pulse;
+      float polarity = mix(mix(-0.22, 0.48, uGesture), -0.82, uPinch);
+      jointFlow += (radial * polarity + curl * (0.33 + uPinch * 0.22)) * field * pulse;
       jointInfluence = max(jointInfluence, field);
     }
 
@@ -290,6 +292,8 @@ export class ParticleField {
     this.handInteractionTarget = 0;
     this.handInteraction = 0;
     this.gestureTarget = 0.62;
+    this.pinchTarget = 0;
+    this.pinch = 0;
     this.energy = 0;
 
     this.jointUniforms = Array.from({ length: MAX_JOINTS }, () => new THREE.Vector4());
@@ -308,6 +312,7 @@ export class ParticleField {
       uInteraction: { value: 0 },
       uHandInteraction: { value: 0 },
       uGesture: { value: 0.62 },
+      uPinch: { value: 0 },
       uPointer: { value: new THREE.Vector3() },
       uEnergy: { value: 0 },
       uJoints: { value: this.jointUniforms }
@@ -467,6 +472,7 @@ export class ParticleField {
     const visibleWidth = visibleHeight * this.camera.aspect;
     const usableHands = hands.slice(0, MAX_HANDS);
     let opennessTotal = 0;
+    let pinchTotal = 0;
     let activeHands = 0;
 
     this.jointTargets.forEach((joint) => joint.set(0, 0, 0, 0));
@@ -479,6 +485,7 @@ export class ParticleField {
       activeHands += 1;
       nextActiveSlots[handSlot] = true;
       opennessTotal += hand.openness ?? 0.5;
+      pinchTotal += hand.pinch ?? 0;
 
       hand.landmarks.slice(0, LANDMARKS_PER_HAND).forEach((landmark, index) => {
         const slot = handSlot * LANDMARKS_PER_HAND + index;
@@ -489,7 +496,8 @@ export class ParticleField {
         const predictedZ = (landmark.z || 0) + (landmark.vz || 0) * lead * 0.5;
         const x = (0.5 - predictedX) * visibleWidth * 0.5;
         const y = (0.5 - predictedY) * visibleHeight * 0.5;
-        const z = THREE.MathUtils.clamp(-predictedZ * 9, -1.5, 1.5);
+        const worldDepth = hand.worldLandmarks?.[index]?.z ?? 0;
+        const z = THREE.MathUtils.clamp(-predictedZ * 7.5 + worldDepth * 4.0, -1.5, 1.5);
         const speed = landmark.speed || hand.velocity || 0;
         const fingerOpen = hand.fingers?.[this.fingerForLandmark(index)] || 0;
         const weight = getJointWeight(index, speed, fingerOpen);
@@ -530,6 +538,7 @@ export class ParticleField {
     this.handInteractionTarget = activeHands > 0 ? 1 : 0;
     this.interactionTarget = 0;
     this.gestureTarget = activeHands > 0 ? opennessTotal / activeHands : 0.62;
+    this.pinchTarget = activeHands > 0 ? pinchTotal / activeHands : 0;
     this.energy = Math.max(this.energy, activeHands > 0 ? 0.88 : 0);
   }
 
@@ -545,6 +554,7 @@ export class ParticleField {
   releasePointer() {
     this.interactionTarget = 0;
     this.handInteractionTarget = 0;
+    this.pinchTarget = 0;
     this.handVisibilityTarget = 0;
     this.handSlotActive = [false, false];
     this.handTargetPositions.fill(1000);
@@ -602,6 +612,8 @@ export class ParticleField {
     this.handInteraction = THREE.MathUtils.damp(this.handInteraction, this.handInteractionTarget, 5.5, delta);
     this.uniforms.uHandInteraction.value = this.handInteraction;
     this.uniforms.uGesture.value = THREE.MathUtils.damp(this.uniforms.uGesture.value, this.gestureTarget, 3.8, delta);
+    this.pinch = THREE.MathUtils.damp(this.pinch, this.pinchTarget, 8.5, delta);
+    this.uniforms.uPinch.value = this.pinch;
     this.uniforms.uEnergy.value = this.energy;
     this.uniforms.uJoints.value = this.jointUniforms;
     this.updateHandConstellation(delta);
