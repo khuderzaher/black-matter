@@ -51,6 +51,12 @@ function fingerOpenness(landmarks) {
   return { fingers, openness: values.reduce((sum, value) => sum + value, 0) / values.length };
 }
 
+function measurePinch(landmarks) {
+  const palmWidth = Math.max(0.035, distance2D(landmarks[5], landmarks[17]));
+  const thumbIndexGap = distance2D(landmarks[4], landmarks[8]) / palmWidth;
+  return clamp((0.92 - thumbIndexGap) / 0.62, 0, 1);
+}
+
 function buildHand(result, index, timestamp) {
   const raw = result.landmarks[index];
   const world = result.worldLandmarks?.[index] || [];
@@ -79,6 +85,7 @@ function buildHand(result, index, timestamp) {
 
   history.set(key, { timestamp, landmarks: smoothed });
   const { fingers, openness: measuredOpenness } = fingerOpenness(smoothed);
+  const pinch = measurePinch(smoothed);
   const gestureName = gesture.categoryName || 'Unknown';
   const gestureScore = gesture.score ?? 0;
   const gestureOpenness = {
@@ -102,6 +109,7 @@ function buildHand(result, index, timestamp) {
     gesture: gestureName,
     gestureScore,
     openness,
+    pinch,
     fingers,
     velocity: totalVelocity / 21,
     center,
