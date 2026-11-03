@@ -60,7 +60,10 @@ button { font: inherit; }
   opacity: 0; transition: opacity .8s ease; pointer-events: none;
 }
 .camera-state.is-visible { opacity: 1; }
-.is-immersive .masthead, .is-immersive .camera-state { opacity: 0; }
+.is-immersive .masthead { opacity: 0; }
+.is-immersive .camera-state { opacity: .58; }
+.camera-state.is-warning { color: rgba(255, 202, 170, .82); }
+.camera-state.is-warning .state-dot { background: #f0b18c; box-shadow: 0 0 12px rgba(240,177,140,.65); }
 .state-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.45); box-shadow: 0 0 12px rgba(255,255,255,.35); }
 .camera-state.is-live .state-dot { background: #c5efe3; box-shadow: 0 0 12px rgba(180,255,220,.7); }
 .exit-button {
@@ -72,7 +75,10 @@ button { font: inherit; }
 .exit-button.is-visible { opacity: .14; pointer-events: auto; }
 .exit-button:hover, .exit-button:focus-visible { opacity: .9; border-color: rgba(255,255,255,.5); }
 .vignette { position: absolute; z-index: 2; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 34%, rgba(0,0,0,.18) 100%); }
-#camera-video { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+#camera-video {
+  position: fixed; left: -4px; top: -4px; width: 2px; height: 2px;
+  opacity: .01; pointer-events: none; border: 0;
+}
 
 @media (max-width: 600px) {
   .masthead { top: max(20px, env(safe-area-inset-top)); }
