@@ -109,11 +109,13 @@ function setCameraState(state, count = 0, hands = [], metrics = {}) {
     cameraLabel.textContent = 'RESTARTING HAND ENGINE';
     if (metrics.message) permissionNote.textContent = metrics.message;
   } else if (state === 'warning' || state === 'muted') {
-    cameraLabel.textContent = state === 'muted' ? 'CAMERA STREAM PAUSED' : 'FRAME ANALYSIS WARNING';
-    if (metrics.message) permissionNote.textContent = metrics.message;
+    const detail = (metrics.message || 'Waiting for the camera stream.').replaceAll('_', ' ');
+    cameraLabel.textContent = (state === 'muted' ? 'CAMERA PAUSED · ' : 'ANALYSIS WARNING · ') + detail.slice(0, 76);
+    permissionNote.textContent = metrics.message || 'The recognition engine reported a temporary warning.';
   } else if (state === 'error') {
-    cameraLabel.textContent = 'HAND TRACKING STOPPED';
-    permissionNote.textContent = metrics.message || 'The camera or recognition worker stopped. Tap retry to reconnect.';
+    const detail = metrics.message || 'Camera or recognition worker stopped unexpectedly.';
+    cameraLabel.textContent = `TRACKING ERROR · ${detail.slice(0, 82)}`;
+    permissionNote.textContent = detail;
     cameraButton.disabled = false;
     cameraButton.textContent = 'RETRY HAND TRACKING';
   } else {
@@ -136,8 +138,9 @@ async function enableCamera() {
     handTracking = null;
     cameraButton.disabled = false;
     cameraButton.textContent = 'TRY HAND TRACKING AGAIN';
-    permissionNote.textContent = error?.message || 'Hand tracking failed. Pointer and touch interaction remain available.';
-    setCameraState('error');
+    const detail = error?.message || 'Hand tracking failed. Pointer and touch interaction remain available.';
+    permissionNote.textContent = detail;
+    setCameraState('error', 0, [], { message: detail });
   }
 }
 
