@@ -32,7 +32,68 @@
       </div>
 
       <button class="exit-button" id="exit-button" type="button" aria-label="Exit immersive experience">＋</button>
-      <video id="camera-video" autoplay playsinline muted aria-hidden="true"></video>
+
+      <button class="sensor-toggle" id="sensor-toggle" type="button" aria-label="Open live camera and hand diagnostics" aria-controls="sensor-panel" aria-expanded="false" title="Live hand sensor">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 8.5h3l1.5-2h7l1.5 2h3A1.5 1.5 0 0 1 21.5 10v7A1.5 1.5 0 0 1 20 18.5H4A1.5 1.5 0 0 1 2.5 17v-7A1.5 1.5 0 0 1 4 8.5Z"/>
+          <circle cx="12" cy="13.25" r="3.25"/>
+          <path d="M18 11h.01"/>
+        </svg>
+        <span class="sensor-toggle-dot"></span>
+      </button>
+
+      <aside class="sensor-panel" id="sensor-panel" aria-label="Live camera and hand analysis" aria-hidden="true" hidden>
+        <header class="sensor-panel-head">
+          <div class="sensor-panel-heading">
+            <span class="sensor-kicker">BLACK MATTER / LIVE INPUT</span>
+            <strong id="sensor-status">CAMERA STANDBY</strong>
+          </div>
+          <button class="sensor-close" id="sensor-close" type="button" aria-label="Close sensor window">×</button>
+        </header>
+
+        <div class="sensor-preview" id="sensor-preview">
+          <video id="camera-video" autoplay playsinline muted aria-hidden="true"></video>
+          <canvas id="hand-overlay" aria-hidden="true"></canvas>
+          <div class="preview-empty" id="preview-empty">
+            <span class="preview-empty-mark">◎</span>
+            <span>WAITING FOR LIVE CAMERA</span>
+            <small>Enable spatial hand tracking to begin</small>
+          </div>
+          <span class="preview-label">OPTICAL FEED / 21-POINT SKELETON</span>
+        </div>
+
+        <div class="sensor-metrics" aria-live="polite">
+          <div><span>INFERENCE</span><strong id="sensor-latency">—</strong></div>
+          <div><span>FRAME RATE</span><strong id="sensor-fps">—</strong></div>
+          <div><span>HANDS</span><strong id="sensor-hand-count">0 / 2</strong></div>
+        </div>
+
+        <div class="sensor-summary" id="sensor-summary">
+          <p class="sensor-empty-summary">No hand landmarks received yet.</p>
+        </div>
+
+        <section class="joint-inspector">
+          <div class="joint-inspector-head">
+            <div>
+              <span class="sensor-kicker">LANDMARK TELEMETRY</span>
+              <strong>Joint coordinates & motion</strong>
+            </div>
+            <span class="joint-count" id="joint-count">0 POINTS</span>
+          </div>
+          <div class="joint-table-head" aria-hidden="true">
+            <span>#</span><span>JOINT</span><span>X</span><span>Y</span><span>Z</span><span>V</span>
+          </div>
+          <div class="joint-readout" id="joint-readout">
+            <p class="sensor-empty-summary">Coordinates will appear when a hand is detected.</p>
+          </div>
+        </section>
+
+        <footer class="sensor-panel-foot">
+          <span id="sensor-resolution">CAMERA NOT CONNECTED</span>
+          <span>LOCAL PROCESSING</span>
+        </footer>
+      </aside>
+
       <div class="vignette" aria-hidden="true"></div>
     </main>
     <script type="module" src="/src/main.js"></script>
