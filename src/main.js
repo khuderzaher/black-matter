@@ -392,6 +392,8 @@ async function enableCamera() {
     await handTracking.start();
     cameraButton.textContent = 'SPATIAL SENSING ACTIVE';
     cameraButton.disabled = false;
+    sensorEnableCamera.disabled = false;
+    sensorEnableCamera.textContent = 'SENSOR ACTIVE';
     permissionNote.textContent = 'Camera connected. Waiting for live hand landmarks…';
   } catch (error) {
     console.error('Black Matter hand sensing failed:', error);
