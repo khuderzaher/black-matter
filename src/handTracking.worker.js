@@ -2,33 +2,45 @@ import { FilesetResolver, GestureRecognizer } from '@mediapipe/tasks-vision';
 
 let recognizer = null;
 let busy = false;
+let consecutiveErrors = 0;
 const history = new Map();
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const distance2D = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 async function initialize({ wasmUrl, modelUrl }) {
-  const vision = await FilesetResolver.forVisionTasks(wasmUrl);
-  const options = {
-    baseOptions: { modelAssetPath: modelUrl, delegate: 'GPU' },
-    runningMode: 'VIDEO',
-    numHands: 2,
-    minHandDetectionConfidence: 0.58,
-    minHandPresenceConfidence: 0.55,
-    minTrackingConfidence: 0.58
-  };
-
-  try {
-    recognizer = await GestureRecognizer.createFromOptions(vision, options);
-  } catch (gpuError) {
-    console.warn('Black Matter: GPU gesture recognition unavailable; trying CPU.', gpuError);
-    recognizer = await GestureRecognizer.createFromOptions(vision, {
-      ...options,
-      baseOptions: { modelAssetPath: modelUrl, delegate: 'CPU' }
-    });
+  const startedAt = performance.now();
+  const response = await fetch(modelUrl, { mode: 'cors', cache: 'force-cache' });
+  if (!response.ok) {
+    throw new Error(`Hand model download failed: HTTP ${response.status}`);
   }
 
-  self.postMessage({ type: 'ready' });
+  const modelBytes = await response.arrayBuffer();
+  if (modelBytes.byteLength < 100000) {
+    throw new Error('The hand model download appears incomplete.');
+  }
+
+  const vision = await FilesetResolver.forVisionTasks(wasmUrl);
+
+  // CPU is intentionally used inside the worker for reliable mobile-browser compatibility.
+  // This avoids worker/WebGL delegate failures that can stop inference after initialization.
+  recognizer = await GestureRecognizer.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetBuffer: new Uint8Array(modelBytes),
+      delegate: 'CPU'
+    },
+    runningMode: 'VIDEO',
+    numHands: 2,
+    minHandDetectionConfidence: 0.55,
+    minHandPresenceConfidence: 0.5,
+    minTrackingConfidence: 0.55
+  });
+
+  self.postMessage({
+    type: 'ready',
+    backend: 'CPU',
+    modelLoadMs: Math.round(performance.now() - startedAt)
+  });
 }
 
 function fingerOpenness(landmarks) {
@@ -101,7 +113,10 @@ function buildHand(result, index, timestamp) {
     ? gestureOpenness[gestureName]
     : measuredOpenness;
   const palm = [0, 5, 9, 13, 17].map((landmarkIndex) => smoothed[landmarkIndex]);
-  const center = palm.reduce((sum, point) => ({ x: sum.x + point.x / 5, y: sum.y + point.y / 5 }), { x: 0, y: 0 });
+  const center = palm.reduce((sum, point) => ({
+    x: sum.x + point.x / 5,
+    y: sum.y + point.y / 5
+  }), { x: 0, y: 0 });
 
   return {
     handedness: key,
@@ -121,20 +136,35 @@ function buildHand(result, index, timestamp) {
 function processFrame(bitmap, timestamp) {
   if (!recognizer || busy) {
     bitmap.close();
+    self.postMessage({ type: 'frame-error', message: 'Recognizer is not ready or is still processing.' });
     return;
   }
+
   busy = true;
+  const startedAt = performance.now();
   try {
     const result = recognizer.recognizeForVideo(bitmap, timestamp);
     const hands = (result.landmarks || []).slice(0, 2)
       .map((_, index) => buildHand(result, index, timestamp))
       .sort((a, b) => a.handedness.localeCompare(b.handedness));
-    if (hands.length === 0) {
-      history.clear();
-    }
-    self.postMessage({ type: 'hands', hands, timestamp });
+
+    consecutiveErrors = 0;
+    if (hands.length === 0) history.clear();
+
+    self.postMessage({
+      type: 'hands',
+      hands,
+      timestamp,
+      inferenceMs: Math.round(performance.now() - startedAt)
+    });
   } catch (error) {
-    self.postMessage({ type: 'frame-error', message: error?.message || 'Gesture recognition failed.' });
+    consecutiveErrors += 1;
+    const message = error?.message || 'Gesture recognition failed.';
+    self.postMessage({
+      type: consecutiveErrors >= 3 ? 'fatal' : 'frame-error',
+      message,
+      consecutiveErrors
+    });
   } finally {
     bitmap.close();
     busy = false;
@@ -151,10 +181,12 @@ self.addEventListener('message', async (event) => {
     }
     return;
   }
+
   if (data?.type === 'frame') {
     processFrame(data.bitmap, data.timestamp);
     return;
   }
+
   if (data?.type === 'stop') {
     recognizer?.close();
     recognizer = null;
