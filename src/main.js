@@ -309,11 +309,21 @@ function setCameraState(state, count = 0, hands = [], metrics = {}) {
   const active = state === 'live' || state === 'tracking' || state === 'muted' || state === 'warning';
   cameraState.classList.toggle('is-live', active);
   cameraState.classList.toggle('is-warning', state === 'warning' || state === 'muted' || state === 'error');
+  sensorToggle.classList.toggle('is-live', active);
+  sensorStatus.classList.toggle('is-live', state === 'live' || state === 'tracking');
+  sensorStatus.classList.toggle('is-error', state === 'error' || state === 'warning' || state === 'muted');
+
+  if (Number.isFinite(metrics.inferenceMs)) sensorLatency.textContent = `${metrics.inferenceMs} MS`;
+  if (Number.isFinite(metrics.fps) && metrics.fps > 0) sensorFps.textContent = `${metrics.fps.toFixed(1)} FPS`;
+  sensorHandCount.textContent = `${count} / 2`;
+  if (metrics.width && metrics.height) sensorResolution.textContent = `${metrics.width} × ${metrics.height} / ${count} HAND(S)`;
 
   if (state === 'loading') {
     cameraLabel.textContent = 'STARTING CAMERA AND MODEL';
+    sensorStatus.textContent = 'INITIALIZING SENSOR';
   } else if (state === 'live') {
     cameraLabel.textContent = 'CAMERA LIVE · WAITING FOR FIRST RESULT';
+    sensorStatus.textContent = 'CAMERA LIVE · ANALYSIS STARTING';
     if (metrics.message) permissionNote.textContent = metrics.message;
   } else if (state === 'tracking') {
     const details = hands.map((hand) => hand.gesture.replaceAll('_', ' ')).join(' · ');
@@ -321,25 +331,33 @@ function setCameraState(state, count = 0, hands = [], metrics = {}) {
     cameraLabel.textContent = count > 0
       ? `${count} HAND${count > 1 ? 'S' : ''} · ${details}${inference}`
       : `CAMERA LIVE · NO HAND DETECTED${inference}`;
+    sensorStatus.textContent = count > 0 ? `TRACKING ${count} HAND${count > 1 ? 'S' : ''}` : 'SEARCHING FOR HANDS';
     if (metrics.frames) permissionNote.textContent = `Live analysis · ${metrics.frames} frames processed · ${metrics.width || 0}×${metrics.height || 0} camera`;
   } else if (state === 'recovering') {
     cameraLabel.textContent = 'RESTARTING HAND ENGINE';
+    sensorStatus.textContent = 'RECONNECTING SENSOR';
     if (metrics.message) permissionNote.textContent = metrics.message;
   } else if (state === 'warning' || state === 'muted') {
     const detail = (metrics.message || 'Waiting for the camera stream.').replaceAll('_', ' ');
     cameraLabel.textContent = (state === 'muted' ? 'CAMERA PAUSED · ' : 'ANALYSIS WARNING · ') + detail.slice(0, 76);
+    sensorStatus.textContent = state === 'muted' ? 'CAMERA STREAM PAUSED' : 'ANALYSIS WARNING';
     permissionNote.textContent = metrics.message || 'The recognition engine reported a temporary warning.';
   } else if (state === 'error') {
     const detail = metrics.message || 'Camera or recognition worker stopped unexpectedly.';
     cameraLabel.textContent = `TRACKING ERROR · ${detail.slice(0, 82)}`;
+    sensorStatus.textContent = 'TRACKING ERROR';
     permissionNote.textContent = detail;
     cameraButton.disabled = false;
     cameraButton.textContent = 'RETRY HAND TRACKING';
   } else {
     cameraLabel.textContent = 'POINTER FIELD';
+    sensorStatus.textContent = 'CAMERA STANDBY';
+    sensorLatency.textContent = '—';
+    sensorFps.textContent = '—';
   }
-}
 
+  if (inspectorOpen) updateInspectorReadout(latestHands);
+}
 async function enableCamera() {
   cameraButton.disabled = true;
   cameraButton.textContent = 'INITIALIZING SPATIAL SENSING…';
@@ -373,6 +391,7 @@ cameraButton.addEventListener('click', async () => {
 
 function exitExperience() {
   if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+  setInspectorOpen(false);
   handTracking?.stop();
   handTracking = null;
   setExperienceStarted(false);
@@ -382,7 +401,13 @@ function exitExperience() {
   setCameraState('off');
 }
 exitButton.addEventListener('click', exitExperience);
+sensorToggle.addEventListener('click', () => setInspectorOpen(!inspectorOpen));
+sensorClose.addEventListener('click', () => setInspectorOpen(false));
 window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && inspectorOpen) {
+    setInspectorOpen(false);
+    return;
+  }
   if (event.key === 'Escape' && experienceStarted) exitExperience();
 });
 
@@ -394,6 +419,7 @@ function resize() {
   renderer.setSize(width, height, false);
   composer.setSize(width, height);
   field.resize();
+  if (inspectorOpen) drawHandOverlay(latestHands);
 }
 window.addEventListener('resize', resize, { passive: true });
 
