@@ -162,6 +162,13 @@ button { font: inherit; }
 .preview-empty[hidden] { display: none; }
 .preview-empty-mark { font: 25px 'Manrope', sans-serif; color: rgba(193,178,255,.68); text-shadow: 0 0 18px rgba(158,135,255,.45); }
 .preview-empty small { font: 8px 'Manrope', sans-serif; letter-spacing: .03em; color: rgba(210,215,239,.36); }
+.preview-enable {
+  margin-top: 5px; padding: 7px 11px; border: 1px solid rgba(190,177,255,.32);
+  border-radius: 3px; background: rgba(130,111,205,.12); color: rgba(225,220,255,.82);
+  font: 7px 'DM Mono', monospace; letter-spacing: .12em; cursor: pointer;
+}
+.preview-enable:disabled { opacity: .45; cursor: wait; }
+.preview-enable:hover { background: rgba(130,111,205,.24); border-color: rgba(190,177,255,.6); }
 .preview-label {
   position: absolute; left: 10px; bottom: 9px; padding: 4px 6px;
   border: 1px solid rgba(255,255,255,.14); border-radius: 3px;
