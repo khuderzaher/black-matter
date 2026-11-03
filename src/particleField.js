@@ -386,12 +386,13 @@ export class ParticleField {
 
     usableHands.forEach((hand, handIndex) => {
       if (!Array.isArray(hand.landmarks) || hand.landmarks.length < LANDMARKS_PER_HAND) return;
+      const handSlot = hand.handedness === 'Right' ? 1 : hand.handedness === 'Left' ? 0 : handIndex;
       activeHands += 1;
-      nextActiveSlots[handIndex] = true;
+      nextActiveSlots[handSlot] = true;
       opennessTotal += hand.openness ?? 0.5;
 
       hand.landmarks.slice(0, LANDMARKS_PER_HAND).forEach((landmark, index) => {
-        const slot = handIndex * LANDMARKS_PER_HAND + index;
+        const slot = handSlot * LANDMARKS_PER_HAND + index;
         // A short predictive lead makes the field feel connected to motion, not delayed coordinates.
         const lead = 0.026;
         const predictedX = landmark.x + (landmark.vx || 0) * lead;
