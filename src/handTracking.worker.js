@@ -10,23 +10,13 @@ const distance2D = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 async function initialize({ wasmUrl, modelUrl }) {
   const startedAt = performance.now();
-  const response = await fetch(modelUrl, { mode: 'cors', cache: 'force-cache' });
-  if (!response.ok) {
-    throw new Error(`Hand model download failed: HTTP ${response.status}`);
-  }
-
-  const modelBytes = await response.arrayBuffer();
-  if (modelBytes.byteLength < 100000) {
-    throw new Error('The hand model download appears incomplete.');
-  }
-
   const vision = await FilesetResolver.forVisionTasks(wasmUrl);
 
-  // CPU is intentionally used inside the worker for reliable mobile-browser compatibility.
-  // This avoids worker/WebGL delegate failures that can stop inference after initialization.
+  // Use MediaPipe's documented modelAssetPath loader. This avoids a separate
+  // fetch/ArrayBuffer stage and lets the task runtime load the model itself.
   recognizer = await GestureRecognizer.createFromOptions(vision, {
     baseOptions: {
-      modelAssetBuffer: new Uint8Array(modelBytes),
+      modelAssetPath: modelUrl,
       delegate: 'CPU'
     },
     runningMode: 'VIDEO',
